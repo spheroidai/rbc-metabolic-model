@@ -187,8 +187,20 @@ class SimulationEngine:
             t_eval = np.linspace(0, t_max, 75)  # 75 time points
             
             # Create ODE function wrapper with curve fitting strength
+            # Verify curve_fitting_data availability
+            if curve_fit_strength > 0:
+                try:
+                    from curve_fitting_data import CURVE_FIT_PARAMS
+                    if progress_callback:
+                        progress_callback(0.35, f"✓ Curve fitting module loaded ({len(CURVE_FIT_PARAMS)} metabolites)")
+                except ImportError as e:
+                    if progress_callback:
+                        progress_callback(0.35, f"⚠️ Curve fitting unavailable: {e}")
+            
             def ode_func(t, x):
-                return equadiff_brodbar(t, x, curve_fit_strength)
+                return equadiff_brodbar(t, x, thermo_constraints=None, 
+                                       custom_params=None,
+                                       curve_fit_strength=curve_fit_strength)
             
             if progress_callback:
                 progress_callback(0.4, f"Integrating with {solver_method} solver...")
