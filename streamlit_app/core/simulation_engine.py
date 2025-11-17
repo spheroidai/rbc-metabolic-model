@@ -211,8 +211,13 @@ class SimulationEngine:
             if progress_callback:
                 progress_callback(0.8, "Processing results...")
             
-            # Get metabolite names
-            metabolite_names = list(BRODBAR_METABOLITE_MAP.keys())
+            # Get metabolite names in correct index order (not dictionary order!)
+            # This is CRITICAL: sol.y columns are ordered by index 0-106, not by dict insertion order
+            # Same logic as CLI main.py which builds metabolite_list correctly
+            metabolite_names = [''] * 107
+            for name, idx in BRODBAR_METABOLITE_MAP.items():
+                if idx < 107:
+                    metabolite_names[idx] = name
             
             # Add PHE to metabolite names if pH perturbation was active
             if ph_perturbation and n_metabolites == 108:
