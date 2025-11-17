@@ -1,6 +1,7 @@
 # 🩸 RBC Metabolic Model - Python Implementation
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app-name.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://rbc-metabolic-model.streamlit.app)
+[![GitHub](https://img.shields.io/badge/GitHub-spheroidai%2Frbc--metabolic--model-blue?logo=github)](https://github.com/spheroidai/rbc-metabolic-model)
 
 Interactive Red Blood Cell metabolic simulation platform with comprehensive pH perturbation analysis and real-time visualization.
 
