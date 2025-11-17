@@ -151,7 +151,6 @@ def plot_single_metabolite_comparison(results, metabolite_name):
         metab_idx = None
         
         # Same matching strategy as CLI visualization.py lines 83-84, 98-99
-        # Find matching metabolite in experimental data (case-insensitive)
         metab_name_lower = metabolite_name.lower()
         match_indices = [k for k, name in enumerate(exp_data['metabolites']) 
                         if str(name).lower() == metab_name_lower]
@@ -168,7 +167,7 @@ def plot_single_metabolite_comparison(results, metabolite_name):
                     exp_data['values'].shape[0] > metab_idx):
                     fig.add_trace(go.Scatter(
                         x=exp_data['time'],
-                        y=exp_data['values'][metab_idx, :],  # (metabolite_idx, all_timepoints)
+                        y=exp_data['values'][metab_idx, :],
                         mode='markers',
                         name='Experimental',
                         marker=dict(size=8, color='#262730', symbol='circle', 
