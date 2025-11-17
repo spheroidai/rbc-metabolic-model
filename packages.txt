@@ -1,6 +1,0 @@
-# System-level packages for Streamlit Community Cloud
-# Only needed if your app requires specific system packages
-#
-# Common examples:
-# build-essential
-# python3-dev
