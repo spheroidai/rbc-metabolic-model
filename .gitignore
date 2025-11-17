@@ -21,11 +21,13 @@ ENV/
 .streamlit/secrets.toml
 .streamlit/credentials.toml
 
-# Data & Outputs
+# Data and output files
 Simulations/
 *.png
 *.pdf
-*.csv
+# *.csv  # Commented out - we need fitted_params.csv for the app
+# Exclude only simulation output CSVs
+Simulations/*.csv
 
 # IDE
 .vscode/
