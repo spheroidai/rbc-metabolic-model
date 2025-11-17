@@ -13,11 +13,28 @@ import sys
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root / "src"))
 
+
+class SimpleFluxTracker:
+    """Simple flux tracker compatible with equadiff_brodbar."""
+    def __init__(self):
+        self.times = []
+        self.fluxes = {}
+    
+    def add_timepoint(self, t: float, flux_dict: dict):
+        """Add flux values for a specific timepoint."""
+        self.times.append(t)
+        for reaction, flux in flux_dict.items():
+            if reaction not in self.fluxes:
+                self.fluxes[reaction] = []
+            self.fluxes[reaction].append(flux)
+
+
 # Import existing modules
 try:
     from equadiff_brodbar import equadiff_brodbar, BRODBAR_METABOLITE_MAP
     from equadiff_brodbar import enable_pH_modulation, disable_pH_modulation
     from equadiff_brodbar import enable_bohr_tracking, disable_bohr_tracking
+    from equadiff_brodbar import enable_flux_tracking, disable_flux_tracking
     from curve_fit import curve_fit_ja
     from parse_initial_conditions import parse_initial_conditions
     from ph_perturbation import (PhPerturbation, create_step_perturbation,
@@ -193,6 +210,19 @@ class SimulationEngine:
                         progress_callback(0.32, f"⚠️ Bohr tracking unavailable: {e}")
                     bohr_data = None
             
+            # Enable flux tracking for all simulations
+            flux_tracker = None
+            try:
+                # Initialize flux tracker
+                flux_tracker = SimpleFluxTracker()
+                if enable_flux_tracking(flux_tracker):
+                    if progress_callback:
+                        progress_callback(0.33, "✓ Flux tracking enabled")
+            except Exception as e:
+                if progress_callback:
+                    progress_callback(0.33, f"⚠️ Flux tracking unavailable: {e}")
+                flux_tracker = None
+            
             if progress_callback:
                 progress_callback(0.35, f"Starting integration ({n_metabolites} metabolites)...")
             
@@ -252,13 +282,19 @@ class SimulationEngine:
             # Calculate duration
             duration = time.time() - start_time
             
-            # Clean up pH modulation and Bohr tracking after integration
+            # Clean up pH modulation, Bohr tracking, and flux tracking after integration
             if ph_perturbation and PH_MODULES_AVAILABLE:
                 try:
                     disable_pH_modulation()
                     disable_bohr_tracking()
                 except:
                     pass
+            
+            # Disable flux tracking
+            try:
+                disable_flux_tracking()
+            except:
+                pass
             
             if progress_callback:
                 progress_callback(1.0, "Simulation completed!")
@@ -282,6 +318,7 @@ class SimulationEngine:
                     'description': ph_perturbation.get_description() if ph_perturbation else "None"
                 },
                 'bohr_effect': bohr_data if bohr_data and len(bohr_data.get('time', [])) > 0 else None,
+                'flux_data': {'times': flux_tracker.times, 'fluxes': flux_tracker.fluxes} if flux_tracker and len(flux_tracker.times) > 0 else None,
                 'experimental_data': {
                     'time': time_exp if time_exp is not None else [],
                     'metabolites': experimental_metabolites,
