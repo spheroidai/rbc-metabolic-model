@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from core.simulation_engine import SimulationEngine, export_results_csv
 from core.plotting import plot_metabolites_interactive, plot_summary_statistics, plot_ph_profile
+from core.bohr_plotting import plot_bohr_overview, plot_bohr_summary_cards, create_bohr_interpretation_text
 from core.data_loader import validate_data_files, get_data_summary
 
 st.set_page_config(
@@ -407,6 +408,79 @@ if st.session_state.get('simulation_done', False):
                 ph_fig = plot_ph_profile(ph_info, results['t'][-1])
                 if ph_fig:
                     st.plotly_chart(ph_fig, use_container_width=True)
+            
+            # Bohr Effect Analysis (only when pH perturbation is active)
+            if 'bohr_effect' in results and results['bohr_effect'] is not None:
+                st.markdown("---")
+                st.subheader("🫁 Bohr Effect Analysis")
+                st.caption("*Impact of pH changes on oxygen binding and delivery*")
+                
+                bohr_data = results['bohr_effect']
+                
+                # Summary cards
+                bohr_summary = plot_bohr_summary_cards(bohr_data)
+                if bohr_summary:
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        P50_mean = bohr_summary['P50']['mean']
+                        P50_change = bohr_summary['P50']['change']
+                        delta_color = "inverse" if P50_change < 0 else "normal"
+                        st.metric(
+                            "Mean P50", 
+                            f"{P50_mean:.1f} mmHg",
+                            f"{P50_change:+.1f} mmHg",
+                            delta_color=delta_color
+                        )
+                        st.caption("Half-saturation pressure")
+                    
+                    with col2:
+                        sat_art = bohr_summary['saturation']['arterial']
+                        st.metric(
+                            "Arterial O₂ Sat", 
+                            f"{sat_art:.1f}%"
+                        )
+                        st.caption("Pulmonary capillaries")
+                    
+                    with col3:
+                        extraction = bohr_summary['saturation']['extraction']
+                        st.metric(
+                            "O₂ Extraction", 
+                            f"{extraction:.1f}%"
+                        )
+                        st.caption("Tissue delivery")
+                    
+                    with col4:
+                        BPG_mean = bohr_summary['BPG']['mean']
+                        st.metric(
+                            "2,3-BPG", 
+                            f"{BPG_mean:.2f} mM"
+                        )
+                        st.caption("Allosteric regulator")
+                
+                # Comprehensive Bohr visualization
+                with st.expander("📊 View Detailed Bohr Effect Analysis", expanded=True):
+                    bohr_fig = plot_bohr_overview(bohr_data)
+                    if bohr_fig:
+                        st.plotly_chart(bohr_fig, use_container_width=True)
+                    
+                    # Clinical interpretation
+                    st.markdown("### 🔬 Clinical Interpretation")
+                    interpretation = create_bohr_interpretation_text(bohr_summary, ph_info['type'])
+                    st.markdown(interpretation)
+                    
+                    # Download Bohr data
+                    st.markdown("### 💾 Export Bohr Metrics")
+                    import pandas as pd
+                    df_bohr = pd.DataFrame(bohr_data)
+                    csv_bohr = df_bohr.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download Bohr Effect Data (CSV)",
+                        data=csv_bohr,
+                        file_name=f"bohr_effect_{ph_info['type'].lower()}.csv",
+                        mime="text/csv",
+                        help="Download P50, O2 saturation, pH, and BPG data"
+                    )
         
         st.markdown("---")
         

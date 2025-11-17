@@ -17,6 +17,7 @@ sys.path.append(str(project_root / "src"))
 try:
     from equadiff_brodbar import equadiff_brodbar, BRODBAR_METABOLITE_MAP
     from equadiff_brodbar import enable_pH_modulation, disable_pH_modulation
+    from equadiff_brodbar import enable_bohr_tracking, disable_bohr_tracking
     from curve_fit import curve_fit_ja
     from parse_initial_conditions import parse_initial_conditions
     from ph_perturbation import (PhPerturbation, create_step_perturbation,
@@ -179,8 +180,21 @@ class SimulationEngine:
                 if progress_callback:
                     progress_callback(0.3, f"Added pHe to initial conditions (108 metabolites)")
             
+            # Enable Bohr effect tracking if pH perturbation is active
+            bohr_data = None
+            if ph_perturbation and PH_MODULES_AVAILABLE:
+                try:
+                    bohr_data = {}  # Will store Bohr metrics
+                    if enable_bohr_tracking(bohr_data):
+                        if progress_callback:
+                            progress_callback(0.32, "✓ Bohr effect tracking enabled")
+                except Exception as e:
+                    if progress_callback:
+                        progress_callback(0.32, f"⚠️ Bohr tracking unavailable: {e}")
+                    bohr_data = None
+            
             if progress_callback:
-                progress_callback(0.3, f"Starting integration ({n_metabolites} metabolites)...")
+                progress_callback(0.35, f"Starting integration ({n_metabolites} metabolites)...")
             
             # Time span
             t_span = (0, t_max)
@@ -238,10 +252,11 @@ class SimulationEngine:
             # Calculate duration
             duration = time.time() - start_time
             
-            # Clean up pH modulation after integration
+            # Clean up pH modulation and Bohr tracking after integration
             if ph_perturbation and PH_MODULES_AVAILABLE:
                 try:
                     disable_pH_modulation()
+                    disable_bohr_tracking()
                 except:
                     pass
             
@@ -266,6 +281,7 @@ class SimulationEngine:
                     'duration': ph_duration if ph_perturbation_type == "Ramp" else None,
                     'description': ph_perturbation.get_description() if ph_perturbation else "None"
                 },
+                'bohr_effect': bohr_data if bohr_data and len(bohr_data.get('time', [])) > 0 else None,
                 'experimental_data': {
                     'time': time_exp if time_exp is not None else [],
                     'metabolites': experimental_metabolites,
