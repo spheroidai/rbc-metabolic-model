@@ -7,16 +7,41 @@ import numpy as np
 from pathlib import Path
 import sys
 
-# Add src to path for imports
-project_root = Path(__file__).parent.parent.parent
-sys.path.append(str(project_root / "src"))
+# Add src to path for imports - calculate from this file's actual location
+# __file__ is in streamlit_app/core/data_loader.py
+# So parent = core, parent.parent = streamlit_app, parent.parent.parent = project root
+this_file = Path(__file__).resolve()
+project_root = this_file.parent.parent.parent
+src_path = project_root / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
-@st.cache_data(ttl=3600)
 def load_experimental_data():
     """
-    Load experimental data from Brodbar et al.
+    Load experimental data from Brodbar et al. OR uploaded custom data.
+    In validation mode, returns Brodbar data (custom data handled separately).
     Returns DataFrame with metabolite time series
     """
+    # Check mode
+    mode = st.session_state.get('uploaded_data_mode', '')
+    uploaded_active = st.session_state.get('uploaded_data_active', False)
+    
+    # In "validation only" mode, always return Brodbar data
+    # Custom data will be handled separately for comparison
+    if uploaded_active and mode == "Use for validation only":
+        return _load_experimental_data_cached()
+    
+    # In "Replace" mode, use custom data
+    if uploaded_active and mode == "Replace experimental data":
+        if 'uploaded_data' in st.session_state:
+            return st.session_state['uploaded_data'].copy()
+    
+    # Default: load Brodbar data
+    return _load_experimental_data_cached()
+
+@st.cache_data(ttl=3600)
+def _load_experimental_data_cached():
+    """Cached version of experimental data loading from file."""
     try:
         data_path = project_root / "Data_Brodbar_et_al_exp.xlsx"
         df = pd.read_excel(data_path, engine='openpyxl')
@@ -24,6 +49,20 @@ def load_experimental_data():
     except Exception as e:
         st.error(f"Error loading experimental data: {e}")
         return None
+
+def load_custom_validation_data():
+    """
+    Load custom uploaded data for validation/comparison.
+    Returns DataFrame or None if not available.
+    """
+    mode = st.session_state.get('uploaded_data_mode', '')
+    uploaded_active = st.session_state.get('uploaded_data_active', False)
+    
+    if uploaded_active and mode == "Use for validation only":
+        if 'uploaded_data' in st.session_state:
+            return st.session_state['uploaded_data'].copy()
+    
+    return None
 
 @st.cache_data(ttl=3600)
 def load_fitted_parameters():
@@ -113,9 +152,19 @@ def get_data_summary():
 
 def validate_data_files():
     """
-    Check if all required data files exist
+    Check if all required data files exist OR if uploaded data is available
     Returns dict with file availability status
     """
+    # Check if custom uploaded data is available in session_state
+    if 'uploaded_data_active' in st.session_state and st.session_state.get('uploaded_data_active'):
+        # Custom data is available - all files are considered "valid"
+        return {
+            'experimental_data': True,
+            'fitted_params': True,  # Will use uploaded data instead
+            'initial_conditions': True  # Will use uploaded data first timepoint
+        }
+    
+    # Otherwise check physical files
     required_files = {
         'experimental_data': project_root / "Data_Brodbar_et_al_exp.xlsx",
         'fitted_params': project_root / "Data_Brodbar_et_al_exp_fitted_params.csv",

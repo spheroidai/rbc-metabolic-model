@@ -9,9 +9,14 @@ import time
 from pathlib import Path
 import sys
 
-# Add src to path
-project_root = Path(__file__).parent.parent.parent
-sys.path.append(str(project_root / "src"))
+# Add src to path - calculate from this file's actual location
+# __file__ is in streamlit_app/core/simulation_engine.py
+# So parent = core, parent.parent = streamlit_app, parent.parent.parent = project root
+this_file = Path(__file__).resolve()
+project_root = this_file.parent.parent.parent
+src_path = project_root / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 
 class SimpleFluxTracker:
@@ -45,7 +50,24 @@ try:
 except ImportError as e:
     SIMULATION_AVAILABLE = False
     PH_MODULES_AVAILABLE = False
-    st.error(f"Could not import simulation modules: {e}")
+    import traceback
+    error_details = traceback.format_exc()
+    st.error(f"❌ Could not import simulation modules:\n```python\n{error_details}\n```")
+    
+    # Show debugging info
+    st.info(f"""🔍 **Path Debug Info:**
+- This file: `{this_file}`
+- Project root: `{project_root}`
+- Src path: `{src_path}`
+- Src exists: `{src_path.exists()}`
+- equadiff_brodbar.py exists: `{(src_path / 'equadiff_brodbar.py').exists()}`
+    """)
+    
+    st.warning("""💡 **Common Fixes:**
+1. Make sure you're in the correct venv
+2. Check that all dependencies are installed: `pip install -r requirements.txt`
+3. Verify src/ modules don't have import errors
+    """)
 
 
 class SimulationEngine:
@@ -129,6 +151,31 @@ class SimulationEngine:
                 experimental_metabolites = []
                 experimental_values = np.array([])
                 time_exp = np.array([])
+            
+            # Load custom validation data if available
+            custom_val_metabolites = []
+            custom_val_values = np.array([])
+            custom_val_time = np.array([])
+            
+            # Check for custom validation data in session state
+            mode = st.session_state.get('uploaded_data_mode', '')
+            uploaded_active = st.session_state.get('uploaded_data_active', False)
+            
+            if uploaded_active and mode == "Use for validation only":
+                if 'uploaded_data' in st.session_state:
+                    custom_df = st.session_state['uploaded_data']
+                    
+                    if custom_df is not None and not custom_df.empty:
+                        # Extract time and metabolite data
+                        if 'Time' in custom_df.columns:
+                            custom_val_time = custom_df['Time'].values
+                            custom_val_metabolites = [col for col in custom_df.columns if col != 'Time']
+                            
+                            # Build values array (n_metabolites, n_timepoints)
+                            custom_val_values = np.array([custom_df[met].values for met in custom_val_metabolites])
+                            
+                            if progress_callback:
+                                progress_callback(0.17, f"Loaded {len(custom_val_metabolites)} custom metabolites for validation")
             
             if progress_callback:
                 progress_callback(0.2, "Setting up initial conditions...")
@@ -323,7 +370,12 @@ class SimulationEngine:
                     'time': time_exp if time_exp is not None else [],
                     'metabolites': experimental_metabolites,
                     'values': experimental_values
-                }
+                },
+                'custom_validation_data': {
+                    'time': custom_val_time,
+                    'metabolites': custom_val_metabolites,
+                    'values': custom_val_values
+                } if len(custom_val_metabolites) > 0 else None
             }
             
             self.status = "completed"

@@ -3,6 +3,7 @@ Simulation Page - Run RBC Metabolic Simulations
 """
 
 import streamlit as st
+import pandas as pd
 import sys
 from pathlib import Path
 
@@ -68,6 +69,15 @@ st.markdown("""
 
 st.title("🚀 Run Metabolic Simulation")
 st.markdown("Configure and execute RBC metabolism simulations with custom parameters")
+
+# Check for custom uploaded data
+if 'uploaded_data_active' in st.session_state and st.session_state.get('uploaded_data_active'):
+    st.success(f"""
+    ✅ **Using Custom Uploaded Data**  
+    📁 File: {st.session_state.get('uploaded_filename', 'Unknown')}  
+    📊 {len(st.session_state.get('uploaded_data', pd.DataFrame()))} timepoints, {len(st.session_state.get('uploaded_data', pd.DataFrame()).columns)-1} metabolites
+    """)
+    st.caption("💡 Go to Data Upload page to change data source")
 
 st.markdown("---")
 

@@ -186,10 +186,11 @@ if selected_reaction != "None":
     st.caption(f"Comprehensive view of {selected_reaction} flux dynamics")
     
     with st.spinner(f"Analyzing {selected_reaction}..."):
-        # Prepare metabolite results
+        # Prepare metabolite results with simulation times
         metabolite_results = {
             'metabolite_names': results.get('metabolite_names', []),
-            'concentrations': results.get('x', None)
+            'concentrations': results.get('x', None),
+            'sim_times': results.get('t', flux_data['times'])  # Use full simulation times
         }
         
         detail_fig = create_flux_detail_view(selected_reaction, flux_data, metabolite_results)

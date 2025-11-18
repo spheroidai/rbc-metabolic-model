@@ -143,7 +143,7 @@ def plot_single_metabolite_comparison(results, metabolite_name):
                      '<extra></extra>'
     ))
     
-    # Experimental points - use same strategy as CLI (visualization.py)
+    # Experimental points - Brodbar et al. data
     # Match by name (case-insensitive) for ALL metabolites
     has_experimental = False
     if 'experimental_data' in results and results['experimental_data']['metabolites']:
@@ -165,14 +165,54 @@ def plot_single_metabolite_comparison(results, metabolite_name):
                 if (exp_data['values'].size > 0 and 
                     len(exp_data['values'].shape) == 2 and 
                     exp_data['values'].shape[0] > metab_idx):
+                    
+                    # Brodbar et al. data - circle marker with dark gray
                     fig.add_trace(go.Scatter(
                         x=exp_data['time'],
                         y=exp_data['values'][metab_idx, :],
                         mode='markers',
-                        name='Experimental',
-                        marker=dict(size=8, color='#262730', symbol='circle', 
-                                   line=dict(width=1, color='white')),
-                        hovertemplate='<b>Experimental</b><br>' +
+                        name='Brodbar et al.',
+                        marker=dict(
+                            size=8,
+                            color='#262730',  # Dark gray
+                            symbol='circle',
+                            line=dict(width=1, color='white')
+                        ),
+                        hovertemplate='<b>Brodbar et al.</b><br>' +
+                                     'Time: %{x:.1f}h<br>' +
+                                     'Conc: %{y:.4f} mM<br>' +
+                                     '<extra></extra>'
+                    ))
+                    has_experimental = True
+            except (IndexError, KeyError, ValueError) as e:
+                # Silently skip if data not available
+                pass
+    
+    # Custom validation data (if in validation mode)
+    if 'custom_validation_data' in results and results['custom_validation_data'] is not None:
+        custom_data = results['custom_validation_data']
+        
+        # Check if metabolite exists in custom data
+        if metabolite_name in custom_data['metabolites']:
+            try:
+                metab_idx = custom_data['metabolites'].index(metabolite_name)
+                if (custom_data['values'].size > 0 and 
+                    len(custom_data['values'].shape) == 2 and 
+                    custom_data['values'].shape[0] > metab_idx):
+                    
+                    # Custom data - diamond marker with blue color
+                    fig.add_trace(go.Scatter(
+                        x=custom_data['time'],
+                        y=custom_data['values'][metab_idx, :],
+                        mode='markers',
+                        name='Custom Data',
+                        marker=dict(
+                            size=10,
+                            color='#1f77b4',  # Blue
+                            symbol='diamond',
+                            line=dict(width=2, color='white')
+                        ),
+                        hovertemplate='<b>Custom Data</b><br>' +
                                      'Time: %{x:.1f}h<br>' +
                                      'Conc: %{y:.4f} mM<br>' +
                                      '<extra></extra>'

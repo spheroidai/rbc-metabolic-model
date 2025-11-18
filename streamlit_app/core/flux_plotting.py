@@ -312,15 +312,19 @@ def create_flux_detail_view(reaction_name: str, flux_data: Dict,
     flux_data : dict
         Dictionary with 'times', 'fluxes'
     metabolite_results : dict
-        Full simulation results with metabolite concentrations
+        Full simulation results with metabolite concentrations and simulation times
         
     Returns:
     --------
     go.Figure
         Detailed analysis figure
     """
-    times = np.array(flux_data['times'])
+    flux_times = np.array(flux_data['times'])
     flux_values = np.array(flux_data['fluxes'][reaction_name])
+    
+    # Use full simulation times for metabolite concentrations
+    # Flux tracking may have fewer points than full simulation
+    sim_times = metabolite_results.get('sim_times', flux_times)  # Fallback to flux times if not available
     
     # Get reaction info
     rxn_info = REACTION_INFO.get(reaction_name, {
@@ -355,7 +359,7 @@ def create_flux_detail_view(reaction_name: str, flux_data: Dict,
                 idx = met_names.index(substrate)
                 fig.add_trace(
                     go.Scatter(
-                        x=times,
+                        x=sim_times,  # Use simulation times, not flux times
                         y=concentrations[:, idx],
                         mode='lines',
                         name=substrate,
@@ -371,7 +375,7 @@ def create_flux_detail_view(reaction_name: str, flux_data: Dict,
                 idx = met_names.index(product)
                 fig.add_trace(
                     go.Scatter(
-                        x=times,
+                        x=sim_times,  # Use simulation times, not flux times
                         y=concentrations[:, idx],
                         mode='lines',
                         name=product,
@@ -384,7 +388,7 @@ def create_flux_detail_view(reaction_name: str, flux_data: Dict,
     # Plot 3: Flux over time (bottom-left)
     fig.add_trace(
         go.Scatter(
-            x=times,
+            x=flux_times,  # Use flux tracking times
             y=flux_values,
             mode='lines',
             line=dict(color='#FF6B6B', width=3),
@@ -411,8 +415,8 @@ def create_flux_detail_view(reaction_name: str, flux_data: Dict,
         ['Std Dev', f'{np.std(flux_values):.6f} mM/h'],
         ['Max Flux', f'{np.max(flux_values):.6f} mM/h'],
         ['Min Flux', f'{np.min(flux_values):.6f} mM/h'],
-        ['Max Time', f'{times[np.argmax(flux_values)]:.2f} h'],
-        ['Min Time', f'{times[np.argmin(flux_values)]:.2f} h'],
+        ['Max Time', f'{flux_times[np.argmax(flux_values)]:.2f} h'],
+        ['Min Time', f'{flux_times[np.argmin(flux_values)]:.2f} h'],
     ]
     
     fig.add_trace(
