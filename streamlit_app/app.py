@@ -6,11 +6,6 @@ Author: Jorgelindo da Veiga
 Based on: Bordbar et al. (2015) RBC metabolic model
 """
 
-import warnings
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-warnings.filterwarnings('ignore', message='.*use_container_width.*')
-warnings.filterwarnings('ignore', message='.*keyword arguments have been deprecated.*')
-
 import streamlit as st
 from pathlib import Path
 
