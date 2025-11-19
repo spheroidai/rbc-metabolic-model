@@ -12,16 +12,21 @@ Interactive Red Blood Cell metabolic simulation platform with comprehensive pH p
 **Try it online:** [Live Demo](https://your-app-name.streamlit.app)
 
 Or run locally:
+
 ```bash
 streamlit run streamlit_app/app.py
 ```
 
 The Streamlit app provides:
-- 🏠 **Interactive Dashboard** - User-friendly interface
+
+- 🏠 **Interactive Dashboard** - User-friendly interface with navigation
 - 🚀 **Simulation Engine** - Configure and run metabolic simulations
 - 🧪 **pH Perturbation** - Acidosis, alkalosis, step, and ramp scenarios
-- 📊 **Real-time Visualization** - Interactive Plotly charts
-- 💾 **Data Export** - CSV, PDF formats
+- 🔬 **Flux Analysis** - Interactive metabolic flux visualization and heatmaps
+- 📊 **Sensitivity Analysis** - Compare custom experimental data vs Brodbar dataset
+- 📤 **Data Upload** - Import custom experimental data with intelligent metabolite mapping
+- 📈 **Real-time Visualization** - Interactive Plotly charts
+- 💾 **Data Export** - CSV formats for results and flux data
 
 ### Command Line Interface
 

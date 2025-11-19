@@ -51,6 +51,75 @@ st.markdown("""
         border-radius: 10px;
         color: white;
     }
+    
+    /* Sidebar navigation styling */
+    [data-testid="stSidebarNav"] {
+        padding-top: 2rem;
+    }
+    
+    /* Highlight main navigation pages */
+    [data-testid="stSidebarNav"] ul li:first-child a,
+    [data-testid="stSidebarNav"] ul li:nth-child(2) a {
+        background: linear-gradient(90deg, #FF4B4B 0%, #FF6B6B 100%);
+        color: white !important;
+        font-weight: 700;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 2px 8px rgba(255, 75, 75, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    [data-testid="stSidebarNav"] ul li:first-child a:hover,
+    [data-testid="stSidebarNav"] ul li:nth-child(2) a:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(255, 75, 75, 0.4);
+    }
+    
+    /* Replace "app" with "Home" in navigation */
+    [data-testid="stSidebarNav"] ul li:first-child a span {
+        font-size: 0;
+    }
+    
+    [data-testid="stSidebarNav"] ul li:first-child a span::before {
+        content: "🏠 Home";
+        font-size: 1rem;
+        font-weight: 700;
+        display: inline-block;
+    }
+    
+    /* Add rocket emoji and style to Simulation */
+    [data-testid="stSidebarNav"] ul li:nth-child(2) a span {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(2) a span::before {
+        content: "🚀 ";
+        margin-right: 0.25rem;
+    }
+    
+    /* Style Data Upload button (5th item) in green */
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a {
+        background: linear-gradient(90deg, #28a745 0%, #34ce57 100%);
+        color: white !important;
+        font-weight: 700;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a span::before {
+        content: "📤 ";
+        margin-right: 0.25rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -154,10 +223,10 @@ if uploaded_file is not None:
         
         with tab1:
             st.markdown("### First 10 rows")
-            st.dataframe(df.head(10), use_container_width=True)
+            st.dataframe(df.head(10), width="stretch")
             
             st.markdown("### Last 10 rows")
-            st.dataframe(df.tail(10), use_container_width=True)
+            st.dataframe(df.tail(10), width="stretch")
             
             # Download processed data
             csv_buffer = io.StringIO()
@@ -206,11 +275,11 @@ if uploaded_file is not None:
                     height=500
                 )
                 
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
         
         with tab3:
             st.markdown("### Descriptive Statistics")
-            st.dataframe(df.describe(), use_container_width=True)
+            st.dataframe(df.describe(), width="stretch")
             
             st.markdown("### Data Types")
             dtype_df = pd.DataFrame({
@@ -219,7 +288,7 @@ if uploaded_file is not None:
                 'Non-Null Count': df.count(),
                 'Null Count': df.isnull().sum()
             })
-            st.dataframe(dtype_df, use_container_width=True)
+            st.dataframe(dtype_df, width="stretch")
         
         # Column mapping section with intelligent mapper
         st.markdown("---")
@@ -384,7 +453,7 @@ if uploaded_file is not None:
                     {'Model Metabolite': met, 'Data Column': col}
                     for met, col in metabolite_mappings.items()
                 ])
-                st.dataframe(mapping_df, use_container_width=True)
+                st.dataframe(mapping_df, width="stretch")
             else:
                 st.warning("⚠️ No metabolites mapped. Please map at least one metabolite column.")
         
@@ -448,7 +517,7 @@ if uploaded_file is not None:
                 
                 # Show preview of transformed data
                 with st.expander("🔍 Preview Transformed Data"):
-                    st.dataframe(transformed_df.head(), use_container_width=True)
+                    st.dataframe(transformed_df.head(), width="stretch")
             else:
                 st.error("❌ Please save column mapping first!")
 

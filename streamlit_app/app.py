@@ -6,6 +6,11 @@ Author: Jorgelindo da Veiga
 Based on: Bordbar et al. (2015) RBC metabolic model
 """
 
+import warnings
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings('ignore', message='.*use_container_width.*')
+warnings.filterwarnings('ignore', message='.*keyword arguments have been deprecated.*')
+
 import streamlit as st
 from pathlib import Path
 
@@ -95,6 +100,28 @@ st.markdown("""
     
     [data-testid="stSidebarNav"] ul li:nth-child(2) a span::before {
         content: "🚀 ";
+        margin-right: 0.25rem;
+    }
+    
+    /* Style Data Upload button (5th item) in green */
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a {
+        background: linear-gradient(90deg, #28a745 0%, #34ce57 100%);
+        color: white !important;
+        font-weight: 700;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a span::before {
+        content: "📤 ";
         margin-right: 0.25rem;
     }
 </style>
@@ -243,6 +270,9 @@ with st.sidebar:
     **Main Pages:**
     - 🏠 **Home** - Overview & introduction
     - 🚀 **Simulation** - Execute simulations
+    - 🔬 **Flux Analysis** - Metabolic flux analysis
+    - 📊 **Sensitivity Analysis** - Data comparison
+    - 📤 **Data Upload** - Upload custom data
     
     Navigate using the menu above ☝️
     """)

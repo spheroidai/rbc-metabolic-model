@@ -64,6 +64,28 @@ st.markdown("""
         transform: translateX(5px);
         box-shadow: 0 4px 12px rgba(255, 75, 75, 0.4);
     }
+    
+    /* Style Data Upload button (5th item) in green */
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a {
+        background: linear-gradient(90deg, #28a745 0%, #34ce57 100%);
+        color: white !important;
+        font-weight: 700;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a span::before {
+        content: "📤 ";
+        margin-right: 0.25rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -235,7 +257,7 @@ with col1:
     # Status messages
     st.subheader("🚀 Simulation Control")
     
-    if st.button("▶️ Start Simulation", type="primary", use_container_width=True):
+    if st.button("▶️ Start Simulation", type="primary", width="stretch"):
         # Validate data files
         file_status = validate_data_files()
         missing_files = [name for name, exists in file_status.items() if not exists]
@@ -417,7 +439,7 @@ if st.session_state.get('simulation_done', False):
             with st.expander("📉 View pH Perturbation Profile", expanded=False):
                 ph_fig = plot_ph_profile(ph_info, results['t'][-1])
                 if ph_fig:
-                    st.plotly_chart(ph_fig, use_container_width=True)
+                    st.plotly_chart(ph_fig, width="stretch")
             
             # Bohr Effect Analysis (only when pH perturbation is active)
             if 'bohr_effect' in results and results['bohr_effect'] is not None:
@@ -472,7 +494,7 @@ if st.session_state.get('simulation_done', False):
                 with st.expander("📊 View Detailed Bohr Effect Analysis", expanded=True):
                     bohr_fig = plot_bohr_overview(bohr_data)
                     if bohr_fig:
-                        st.plotly_chart(bohr_fig, use_container_width=True)
+                        st.plotly_chart(bohr_fig, width="stretch")
                     
                     # Clinical interpretation
                     st.markdown("### 🔬 Clinical Interpretation")
@@ -549,13 +571,13 @@ if st.session_state.get('simulation_done', False):
                                 from core.plotting import plot_single_metabolite_comparison
                                 fig = plot_single_metabolite_comparison(results, metabolite)
                                 if fig:
-                                    st.plotly_chart(fig, use_container_width=True)
+                                    st.plotly_chart(fig, width="stretch")
             else:
                 # Original combined plot
                 st.warning("⚠️ Combined mode: Metabolites with very different concentrations may not be visible")
                 fig = plot_metabolites_interactive(results, selected_metabolites, show_experimental=True)
                 if fig:
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
         
         st.markdown("---")
         
@@ -572,15 +594,15 @@ if st.session_state.get('simulation_done', False):
                 data=csv_data,
                 file_name="simulation_results.csv",
                 mime="text/csv",
-                use_container_width=True
+                width="stretch"
             )
         
         with col2:
             # Summary statistics
-            if st.button("📊 Show Summary Statistics", use_container_width=True):
+            if st.button("📊 Show Summary Statistics", width="stretch"):
                 fig_summary = plot_summary_statistics(results)
                 if fig_summary:
-                    st.plotly_chart(fig_summary, use_container_width=True)
+                    st.plotly_chart(fig_summary, width="stretch")
 
 # Footer
 st.markdown("---")

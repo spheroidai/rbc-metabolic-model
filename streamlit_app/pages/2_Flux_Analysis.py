@@ -39,31 +39,73 @@ st.set_page_config(
 # Custom CSS for sidebar styling
 st.markdown("""
     <style>
-    /* Style the Flux Analysis button in sidebar */
-    [data-testid="stSidebarNav"] li:has(a[href*="Flux_Analysis"]) {
-        margin-left: 1rem;
-        margin-top: -0.5rem;
+    /* Sidebar navigation styling */
+    [data-testid="stSidebarNav"] {
+        padding-top: 2rem;
     }
     
-    [data-testid="stSidebarNav"] li:has(a[href*="Flux_Analysis"]) a {
-        background: linear-gradient(90deg, rgba(255, 75, 75, 0.1) 0%, rgba(255, 75, 75, 0.05) 100%);
-        border-left: 3px solid #ff4b4b;
-        padding: 0.5rem 0.75rem !important;
-        border-radius: 0.5rem;
-        font-size: 0.9rem;
+    /* Highlight main navigation pages */
+    [data-testid="stSidebarNav"] ul li:first-child a,
+    [data-testid="stSidebarNav"] ul li:nth-child(2) a {
+        background: linear-gradient(90deg, #FF4B4B 0%, #FF6B6B 100%);
+        color: white !important;
+        font-weight: 700;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 2px 8px rgba(255, 75, 75, 0.3);
         transition: all 0.3s ease;
     }
     
-    [data-testid="stSidebarNav"] li:has(a[href*="Flux_Analysis"]) a:hover {
-        background: linear-gradient(90deg, rgba(255, 75, 75, 0.15) 0%, rgba(255, 75, 75, 0.08) 100%);
-        border-left-color: #ff6b6b;
-        transform: translateX(2px);
+    [data-testid="stSidebarNav"] ul li:first-child a:hover,
+    [data-testid="stSidebarNav"] ul li:nth-child(2) a:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(255, 75, 75, 0.4);
     }
     
-    /* Highlight active state */
-    [data-testid="stSidebarNav"] li:has(a[href*="Flux_Analysis"]) a[aria-current="page"] {
-        background: linear-gradient(90deg, rgba(255, 75, 75, 0.2) 0%, rgba(255, 75, 75, 0.1) 100%);
-        font-weight: 600;
+    /* Replace "app" with "Home" in navigation */
+    [data-testid="stSidebarNav"] ul li:first-child a span {
+        font-size: 0;
+    }
+    
+    [data-testid="stSidebarNav"] ul li:first-child a span::before {
+        content: "🏠 Home";
+        font-size: 1rem;
+        font-weight: 700;
+        display: inline-block;
+    }
+    
+    /* Add rocket emoji and style to Simulation */
+    [data-testid="stSidebarNav"] ul li:nth-child(2) a span {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(2) a span::before {
+        content: "🚀 ";
+        margin-right: 0.25rem;
+    }
+    
+    /* Style Data Upload button (5th item) in green */
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a {
+        background: linear-gradient(90deg, #28a745 0%, #34ce57 100%);
+        color: white !important;
+        font-weight: 700;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+    
+    [data-testid="stSidebarNav"] ul li:nth-child(5) a span::before {
+        content: "📤 ";
+        margin-right: 0.25rem;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -144,14 +186,14 @@ selected_reaction = st.sidebar.selectbox(
 # Export button in sidebar
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 💾 Export Data")
-if st.sidebar.button("📥 Download Flux Data (CSV)", use_container_width=True):
+if st.sidebar.button("📥 Download Flux Data (CSV)", width="stretch"):
     csv_data = export_flux_data_csv(flux_data)
     st.sidebar.download_button(
         label="💾 Save CSV File",
         data=csv_data,
         file_name="metabolic_fluxes.csv",
         mime="text/csv",
-        use_container_width=True
+        width="stretch"
     )
     st.sidebar.success("✓ CSV ready for download!")
 
@@ -167,17 +209,17 @@ tab1, tab2, tab3 = st.tabs(["📌 Initial", "⏱️ Midpoint", "🏁 Final"])
 with tab1:
     with st.spinner("Generating initial timepoint distribution..."):
         fig_initial = create_flux_distribution_combined(flux_data, 'initial')
-        st.plotly_chart(fig_initial, use_container_width=True)
+        st.plotly_chart(fig_initial, width="stretch")
 
 with tab2:
     with st.spinner("Generating midpoint distribution..."):
         fig_midpoint = create_flux_distribution_combined(flux_data, 'midpoint')
-        st.plotly_chart(fig_midpoint, use_container_width=True)
+        st.plotly_chart(fig_midpoint, width="stretch")
 
 with tab3:
     with st.spinner("Generating final timepoint distribution..."):
         fig_final = create_flux_distribution_combined(flux_data, 'final')
-        st.plotly_chart(fig_final, use_container_width=True)
+        st.plotly_chart(fig_final, width="stretch")
 
 # Section 2: Detailed Flux Analysis (when reaction selected)
 if selected_reaction != "None":
@@ -194,7 +236,7 @@ if selected_reaction != "None":
         }
         
         detail_fig = create_flux_detail_view(selected_reaction, flux_data, metabolite_results)
-        st.plotly_chart(detail_fig, use_container_width=True)
+        st.plotly_chart(detail_fig, width="stretch")
     
     # Export button for this specific flux
     st.markdown("### 💾 Export This Flux")
@@ -228,7 +270,7 @@ with st.spinner("Generating flux heatmap..."):
     heatmap_fig = create_flux_heatmap(flux_data, metabolite_results)
     
     # Display heatmap
-    st.plotly_chart(heatmap_fig, use_container_width=True)
+    st.plotly_chart(heatmap_fig, width="stretch")
 
 # Debug info (only in development)
 if st.sidebar.checkbox("Show Debug Info", value=False):
