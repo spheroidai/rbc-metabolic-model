@@ -138,7 +138,7 @@ def create_flux_heatmap(flux_data: Dict, metabolite_results: Dict) -> go.Figure:
                 side="right"
             )
         ),
-        hovertemplate='<b>%{y}</b><br>Time: %{x:.1f}h<br>Flux: %{z:.2f}σ<extra></extra>'
+        hovertemplate='<b>%{y}</b><br>Time: %{x:.1f} days<br>Flux: %{z:.2f}σ<extra></extra>'
     ))
     
     # Add pathway separators and labels
@@ -237,8 +237,8 @@ def create_flux_distribution_combined(flux_data: Dict, timepoint: str) -> go.Fig
     fig = make_subplots(
         rows=1, cols=2,
         subplot_titles=(
-            f'<b>Pathway Flux Distribution</b><br><sub>t = {time_val:.1f}h</sub>',
-            f'<b>Top 20 Individual Reactions</b><br><sub>t = {time_val:.1f}h</sub>'
+            f'<b>Pathway Flux Distribution</b><br><sub>t = {time_val:.1f} days</sub>',
+            f'<b>Top 20 Individual Reactions</b><br><sub>t = {time_val:.1f} days</sub>'
         ),
         horizontal_spacing=0.15
     )
@@ -256,7 +256,7 @@ def create_flux_distribution_combined(flux_data: Dict, timepoint: str) -> go.Fig
             marker=dict(color=colors_pathway),
             text=[f'{v:.3f}' for v in pathway_values],
             textposition='outside',
-            hovertemplate='<b>%{y}</b><br>Total Flux: %{x:.4f} mM/h<extra></extra>'
+            hovertemplate='<b>%{y}</b><br>Total Flux: %{x:.4f} mM/day<extra></extra>'
         ),
         row=1, col=1
     )
@@ -274,14 +274,14 @@ def create_flux_distribution_combined(flux_data: Dict, timepoint: str) -> go.Fig
             marker=dict(color=colors_rxn),
             text=[f'{v:.3f}' for v in rxn_values],
             textposition='outside',
-            hovertemplate='<b>%{y}</b><br>Flux: %{x:.4f} mM/h<extra></extra>'
+            hovertemplate='<b>%{y}</b><br>Flux: %{x:.4f} mM/day<extra></extra>'
         ),
         row=1, col=2
     )
     
     # Update layout
-    fig.update_xaxes(title_text="Total Flux (mM/h)", row=1, col=1)
-    fig.update_xaxes(title_text="Flux (mM/h)", row=1, col=2)
+    fig.update_xaxes(title_text="Total Flux (mM/day)", row=1, col=1)
+    fig.update_xaxes(title_text="Flux (mM/day)", row=1, col=2)
     fig.update_yaxes(title_text="Pathway", tickfont=dict(size=10), row=1, col=1)
     fig.update_yaxes(title_text="Reaction", tickfont=dict(size=9), row=1, col=2)
     
@@ -395,7 +395,7 @@ def create_flux_detail_view(reaction_name: str, flux_data: Dict,
             name='Flux',
             fill='tozeroy',
             fillcolor='rgba(255, 107, 107, 0.2)',
-            hovertemplate='Time: %{x:.1f}h<br>Flux: %{y:.4f} mM/h<extra></extra>'
+            hovertemplate='Time: %{x:.1f} days<br>Flux: %{y:.4f} mM/day<extra></extra>'
         ),
         row=2, col=1
     )
@@ -411,12 +411,12 @@ def create_flux_detail_view(reaction_name: str, flux_data: Dict,
     
     # Plot 4: Statistics table (bottom-right)
     stats = [
-        ['Mean Flux', f'{np.mean(flux_values):.6f} mM/h'],
-        ['Std Dev', f'{np.std(flux_values):.6f} mM/h'],
-        ['Max Flux', f'{np.max(flux_values):.6f} mM/h'],
-        ['Min Flux', f'{np.min(flux_values):.6f} mM/h'],
-        ['Max Time', f'{flux_times[np.argmax(flux_values)]:.2f} h'],
-        ['Min Time', f'{flux_times[np.argmin(flux_values)]:.2f} h'],
+        ['Mean Flux', f'{np.mean(flux_values):.6f} mM/day'],
+        ['Std Dev', f'{np.std(flux_values):.6f} mM/day'],
+        ['Max Flux', f'{np.max(flux_values):.6f} mM/day'],
+        ['Min Flux', f'{np.min(flux_values):.6f} mM/day'],
+        ['Max Time', f'{flux_times[np.argmax(flux_values)]:.2f} days'],
+        ['Min Time', f'{flux_times[np.argmin(flux_values)]:.2f} days'],
     ]
     
     fig.add_trace(

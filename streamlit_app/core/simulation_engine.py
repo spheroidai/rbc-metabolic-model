@@ -98,7 +98,7 @@ class SimulationEngine:
         Parameters:
         -----------
         t_max : float
-            Maximum simulation time (hours)
+            Maximum simulation time (days)
         curve_fit_strength : float
             Curve fitting strength (0.0 to 1.0)
         ic_source : str

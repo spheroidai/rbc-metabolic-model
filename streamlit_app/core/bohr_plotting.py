@@ -47,7 +47,7 @@ def plot_bohr_overview(bohr_data):
         mode='lines',
         name='P50',
         line=dict(color='#1f77b4', width=3),
-        hovertemplate='Time: %{x:.1f}h<br>P50: %{y:.2f} mmHg<extra></extra>'
+        hovertemplate='Time: %{x:.1f} days<br>P50: %{y:.2f} mmHg<extra></extra>'
     ), row=1, col=1)
     
     # Add normal P50 reference
@@ -70,7 +70,7 @@ def plot_bohr_overview(bohr_data):
         mode='lines',
         name='Arterial',
         line=dict(color='#ff4444', width=2.5),
-        hovertemplate='Time: %{x:.1f}h<br>Sat: %{y:.1f}%<extra></extra>'
+        hovertemplate='Time: %{x:.1f} days<br>Sat: %{y:.1f}%<extra></extra>'
     ), row=1, col=2)
     
     fig.add_trace(go.Scatter(
@@ -78,7 +78,7 @@ def plot_bohr_overview(bohr_data):
         mode='lines',
         name='Venous',
         line=dict(color='#4444ff', width=2.5),
-        hovertemplate='Time: %{x:.1f}h<br>Sat: %{y:.1f}%<extra></extra>'
+        hovertemplate='Time: %{x:.1f} days<br>Sat: %{y:.1f}%<extra></extra>'
     ), row=1, col=2)
     
     # Add extraction zone
@@ -106,7 +106,7 @@ def plot_bohr_overview(bohr_data):
         mode='lines',
         name='pHi (Intracellular)',
         line=dict(color='#ff7f0e', width=2.5),
-        hovertemplate='Time: %{x:.1f}h<br>pHi: %{y:.3f}<extra></extra>'
+        hovertemplate='Time: %{x:.1f} days<br>pHi: %{y:.3f}<extra></extra>'
     ), row=2, col=1)
     
     fig.add_trace(go.Scatter(
@@ -114,7 +114,7 @@ def plot_bohr_overview(bohr_data):
         mode='lines',
         name='pHe (Extracellular)',
         line=dict(color='#2ca02c', width=2.5),
-        hovertemplate='Time: %{x:.1f}h<br>pHe: %{y:.3f}<extra></extra>'
+        hovertemplate='Time: %{x:.1f} days<br>pHe: %{y:.3f}<extra></extra>'
     ), row=2, col=1)
     
     # Add 2,3-BPG on secondary axis
@@ -124,7 +124,7 @@ def plot_bohr_overview(bohr_data):
         name='2,3-BPG',
         line=dict(color='#9467bd', width=2, dash='dot'),
         yaxis='y4',
-        hovertemplate='Time: %{x:.1f}h<br>BPG: %{y:.2f} mM<extra></extra>'
+        hovertemplate='Time: %{x:.1f} days<br>BPG: %{y:.2f} mM<extra></extra>'
     ), row=2, col=1, secondary_y=True)
     
     fig.update_xaxes(title_text="Time (days)", row=2, col=1)
@@ -141,7 +141,7 @@ def plot_bohr_overview(bohr_data):
         line=dict(color='#d62728', width=3),
         fill='tozeroy',
         fillcolor='rgba(214, 39, 40, 0.2)',
-        hovertemplate='Time: %{x:.1f}h<br>Extraction: %{y:.1f}%<extra></extra>'
+        hovertemplate='Time: %{x:.1f} days<br>Extraction: %{y:.1f}%<extra></extra>'
     ), row=2, col=2)
     
     # Add normal extraction reference

@@ -138,7 +138,7 @@ def plot_single_metabolite_comparison(results, metabolite_name):
         name='Simulation',
         line=dict(color='#FF4B4B', width=2.5),
         hovertemplate='<b>Simulation</b><br>' +
-                     'Time: %{x:.1f}h<br>' +
+                     'Time: %{x:.1f} days<br>' +
                      'Conc: %{y:.4f} mM<br>' +
                      '<extra></extra>'
     ))
@@ -179,7 +179,7 @@ def plot_single_metabolite_comparison(results, metabolite_name):
                             line=dict(width=1, color='white')
                         ),
                         hovertemplate='<b>Brodbar et al.</b><br>' +
-                                     'Time: %{x:.1f}h<br>' +
+                                     'Time: %{x:.1f} days<br>' +
                                      'Conc: %{y:.4f} mM<br>' +
                                      '<extra></extra>'
                     ))
@@ -213,7 +213,7 @@ def plot_single_metabolite_comparison(results, metabolite_name):
                             line=dict(width=2, color='white')
                         ),
                         hovertemplate='<b>Custom Data</b><br>' +
-                                     'Time: %{x:.1f}h<br>' +
+                                     'Time: %{x:.1f} days<br>' +
                                      'Conc: %{y:.4f} mM<br>' +
                                      '<extra></extra>'
                     ))
@@ -308,7 +308,7 @@ def create_heatmap(results, metabolite_subset=None):
         x=results['t'],
         y=[metabolite_subset[i] for i in range(len(indices))],
         colorscale='Viridis',
-        hovertemplate='Metabolite: %{y}<br>Time: %{x:.2f}h<br>Normalized: %{z:.3f}<extra></extra>'
+        hovertemplate='Metabolite: %{y}<br>Time: %{x:.2f} days<br>Normalized: %{z:.3f}<extra></extra>'
     ))
     
     fig.update_layout(
@@ -378,7 +378,7 @@ def plot_ph_profile(ph_perturbation_info, t_max):
             mode='lines',
             name='Extracellular pH (pHe)',
             line=dict(color='#1f77b4', width=3),
-            hovertemplate='Time: %{x:.1f}h<br>pHe: %{y:.2f}<extra></extra>'
+            hovertemplate='Time: %{x:.1f} days<br>pHe: %{y:.2f}<extra></extra>'
         ))
         
         # Normal pH reference

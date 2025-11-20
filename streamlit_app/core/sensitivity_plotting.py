@@ -207,7 +207,7 @@ def plot_side_by_side_comparison(analyzer, metabolite_name: str) -> go.Figure:
                 mode='markers',
                 name='Brodbar Exp',
                 marker=dict(size=8, color='#262730', symbol='circle'),
-                hovertemplate='Time: %{x:.1f}h<br>Conc: %{y:.4f} mM<extra></extra>'
+                hovertemplate='Time: %{x:.1f} days<br>Conc: %{y:.4f} mM<extra></extra>'
             ),
             row=1, col=1
         )
@@ -220,7 +220,7 @@ def plot_side_by_side_comparison(analyzer, metabolite_name: str) -> go.Figure:
             mode='lines',
             name='Simulation',
             line=dict(color='#FF4B4B', width=2.5),
-            hovertemplate='Time: %{x:.1f}h<br>Conc: %{y:.4f} mM<extra></extra>'
+            hovertemplate='Time: %{x:.1f} days<br>Conc: %{y:.4f} mM<extra></extra>'
         ),
         row=1, col=1
     )
@@ -235,7 +235,7 @@ def plot_side_by_side_comparison(analyzer, metabolite_name: str) -> go.Figure:
                 mode='markers',
                 name='Custom Exp',
                 marker=dict(size=10, color='#1f77b4', symbol='diamond'),
-                hovertemplate='Time: %{x:.1f}h<br>Conc: %{y:.4f} mM<extra></extra>'
+                hovertemplate='Time: %{x:.1f} days<br>Conc: %{y:.4f} mM<extra></extra>'
             ),
             row=1, col=2
         )
@@ -248,13 +248,13 @@ def plot_side_by_side_comparison(analyzer, metabolite_name: str) -> go.Figure:
             mode='lines',
             name='Simulation',
             line=dict(color='#FF4B4B', width=2.5),
-            hovertemplate='Time: %{x:.1f}h<br>Conc: %{y:.4f} mM<extra></extra>'
+            hovertemplate='Time: %{x:.1f} days<br>Conc: %{y:.4f} mM<extra></extra>'
         ),
         row=1, col=2
     )
     
-    fig.update_xaxes(title_text="Time (h)", row=1, col=1)
-    fig.update_xaxes(title_text="Time (h)", row=1, col=2)
+    fig.update_xaxes(title_text="Time (days)", row=1, col=1)
+    fig.update_xaxes(title_text="Time (days)", row=1, col=2)
     fig.update_yaxes(title_text="Concentration (mM)", row=1, col=1)
     fig.update_yaxes(title_text="Concentration (mM)", row=1, col=2)
     
