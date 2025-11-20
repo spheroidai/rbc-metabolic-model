@@ -244,7 +244,7 @@ if selected_reaction != "None":
     with col1:
         import pandas as pd
         df_single = pd.DataFrame({
-            'Time_hours': flux_data['times'],
+            'Time_days': flux_data['times'],
             f'{selected_reaction}_flux': flux_data['fluxes'][selected_reaction]
         })
         csv_single = df_single.to_csv(index=False)
@@ -278,5 +278,5 @@ if st.sidebar.checkbox("Show Debug Info", value=False):
     st.sidebar.markdown("### 🐛 Debug Information")
     st.sidebar.write(f"Time points: {len(flux_data['times'])}")
     st.sidebar.write(f"Reactions tracked: {len(flux_data['fluxes'])}")
-    st.sidebar.write(f"Simulation duration: {flux_data['times'][-1]:.1f} hours")
+    st.sidebar.write(f"Simulation duration: {flux_data['times'][-1]:.1f} days")
     st.sidebar.write(f"Total metabolites: {results.get('n_metabolites', 'N/A')}")

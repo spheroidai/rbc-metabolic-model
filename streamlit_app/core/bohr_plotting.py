@@ -58,7 +58,7 @@ def plot_bohr_overview(bohr_data):
                   annotation_text="Physiol. range", annotation_position="top right",
                   row=1, col=1)
     
-    fig.update_xaxes(title_text="Time (h)", row=1, col=1)
+    fig.update_xaxes(title_text="Time (days)", row=1, col=1)
     fig.update_yaxes(title_text="P50 (mmHg)", row=1, col=1)
     
     # Plot 2: O2 Saturation (Arterial vs Venous)
@@ -93,7 +93,7 @@ def plot_bohr_overview(bohr_data):
         hoverinfo='skip'
     ), row=1, col=2)
     
-    fig.update_xaxes(title_text="Time (h)", row=1, col=2)
+    fig.update_xaxes(title_text="Time (days)", row=1, col=2)
     fig.update_yaxes(title_text="O₂ Saturation (%)", row=1, col=2)
     
     # Plot 3: pH Dynamics (pHi and pHe)
@@ -127,7 +127,7 @@ def plot_bohr_overview(bohr_data):
         hovertemplate='Time: %{x:.1f}h<br>BPG: %{y:.2f} mM<extra></extra>'
     ), row=2, col=1, secondary_y=True)
     
-    fig.update_xaxes(title_text="Time (h)", row=2, col=1)
+    fig.update_xaxes(title_text="Time (days)", row=2, col=1)
     fig.update_yaxes(title_text="pH", row=2, col=1, secondary_y=False)
     fig.update_yaxes(title_text="2,3-BPG (mM)", row=2, col=1, secondary_y=True)
     
@@ -149,7 +149,7 @@ def plot_bohr_overview(bohr_data):
                   annotation_text="Normal (25%)", annotation_position="right",
                   row=2, col=2)
     
-    fig.update_xaxes(title_text="Time (h)", row=2, col=2)
+    fig.update_xaxes(title_text="Time (days)", row=2, col=2)
     fig.update_yaxes(title_text="O₂ Extraction (%)", row=2, col=2)
     
     # Update overall layout

@@ -138,14 +138,14 @@ with st.expander("💡 How to Use This Page", expanded=False):
     5. **Save**: Data will be available in simulations
     
     ### Data Format Requirements
-    - **Time column**: Required (hours or days)
+    - **Time column**: Required (in days)
     - **Metabolite columns**: At least one metabolite concentration
     - **Units**: mM (millimolar) for concentrations
     - **Format**: Numeric values only (no text in data cells)
     
     ### Example Format
     ```
-    Time_hours, GLC, LAC, ATP, ADP, B23PG
+    Time_days, GLC, LAC, ATP, ADP, B23PG
     0.0, 5.0, 2.0, 2.5, 0.8, 4.5
     0.5, 4.8, 2.2, 2.4, 0.9, 4.6
     1.0, 4.5, 2.5, 2.3, 1.0, 4.7
@@ -534,7 +534,7 @@ else:
     st.header("📋 Example Data Format")
     
     example_data = pd.DataFrame({
-        'Time_hours': [0.0, 0.5, 1.0, 2.0, 4.0, 8.0],
+        'Time_days': [0.0, 0.5, 1.0, 2.0, 4.0, 8.0],
         'GLC': [5.0, 4.8, 4.5, 4.0, 3.2, 2.5],
         'LAC': [2.0, 2.2, 2.5, 3.0, 4.5, 6.0],
         'ATP': [2.5, 2.4, 2.3, 2.2, 2.0, 1.8],

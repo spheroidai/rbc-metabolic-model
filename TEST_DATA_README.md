@@ -7,7 +7,7 @@ This test dataset is designed to validate the sensitivity analysis functionality
 
 ### Structure
 - **Metabolites**: 20 key RBC metabolites
-- **Timepoints**: 14 measurements (0, 0.5, 1, 2, 3, 4, 6, 8, 12, 16, 24, 30, 36, 42 hours)
+- **Timepoints**: 14 measurements (0, 0.5, 1, 2, 3, 4, 6, 8, 12, 16, 24, 30, 36, 42 days)
 - **Format**: CSV (Time in columns, Metabolites in rows)
 
 ### Modifications from Brodbar Data

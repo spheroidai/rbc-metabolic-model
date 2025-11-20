@@ -87,7 +87,7 @@ def plot_metabolites_interactive(results, selected_metabolites, show_experimenta
             font=dict(size=20)
         ),
         xaxis=dict(
-            title="Time (hours)",
+            title="Time (days)",
             gridcolor='lightgray',
             showgrid=True
         ),
@@ -235,7 +235,7 @@ def plot_single_metabolite_comparison(results, metabolite_name):
             xanchor='center'
         ),
         xaxis=dict(
-            title="Time (h)",
+            title="Time (days)",
             title_font=dict(size=11),
             gridcolor='#E5E5E5',
             showgrid=True
@@ -313,7 +313,7 @@ def create_heatmap(results, metabolite_subset=None):
     
     fig.update_layout(
         title="Metabolite Dynamics Heatmap",
-        xaxis_title="Time (hours)",
+        xaxis_title="Time (days)",
         yaxis_title="Metabolites",
         height=max(400, len(indices) * 20),
         template='plotly_white'
@@ -391,7 +391,7 @@ def plot_ph_profile(ph_perturbation_info, t_max):
         
         fig.update_layout(
             title=f"pH Perturbation Profile<br><sub>{ph_perturbation_info['description']}</sub>",
-            xaxis_title="Time (hours)",
+            xaxis_title="Time (days)",
             yaxis_title="pH",
             height=400,
             hovermode='x unified',
@@ -482,7 +482,7 @@ def plot_time_course_grid(results, metabolites_list, n_cols=3):
         except (ValueError, IndexError):
             continue
     
-    fig.update_xaxes(title_text="Time (h)")
+    fig.update_xaxes(title_text="Time (days)")
     fig.update_yaxes(title_text="Conc (mM)")
     
     fig.update_layout(

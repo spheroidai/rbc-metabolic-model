@@ -172,7 +172,7 @@ def create_flux_heatmap(flux_data: Dict, metabolite_results: Dict) -> go.Figure:
             x=0.5,
             xanchor='center'
         ),
-        xaxis=dict(title='Time (hours)', side='bottom'),
+        xaxis=dict(title='Time (days)', side='bottom'),
         yaxis=dict(title='', tickfont=dict(size=9)),
         height=max(600, len(ordered_reactions) * 15),
         margin=dict(l=150, r=100, t=80, b=60),
@@ -438,12 +438,12 @@ def create_flux_detail_view(reaction_name: str, flux_data: Dict,
     )
     
     # Update axes
-    fig.update_xaxes(title_text="Time (hours)", row=1, col=1)
+    fig.update_xaxes(title_text="Time (days)", row=1, col=1)
     fig.update_yaxes(title_text="Concentration (mM)", row=1, col=1)
-    fig.update_xaxes(title_text="Time (hours)", row=1, col=2)
+    fig.update_xaxes(title_text="Time (days)", row=1, col=2)
     fig.update_yaxes(title_text="Concentration (mM)", row=1, col=2)
-    fig.update_xaxes(title_text="Time (hours)", row=2, col=1)
-    fig.update_yaxes(title_text="Flux (mM/h)", row=2, col=1)
+    fig.update_xaxes(title_text="Time (days)", row=2, col=1)
+    fig.update_yaxes(title_text="Flux (mM/day)", row=2, col=1)
     
     # Update layout
     fig.update_layout(
@@ -476,7 +476,7 @@ def export_flux_data_csv(flux_data: Dict) -> str:
     str
         CSV string
     """
-    df_data = {'Time_hours': flux_data['times']}
+    df_data = {'Time_days': flux_data['times']}
     df_data.update(flux_data['fluxes'])
     df = pd.DataFrame(df_data)
     return df.to_csv(index=False)

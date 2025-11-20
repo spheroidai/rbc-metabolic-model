@@ -123,11 +123,11 @@ with st.sidebar:
     # Time configuration
     st.subheader("⏱️ Time Settings")
     t_max = st.slider(
-        "Simulation Duration (hours)",
+        "Simulation Duration (days)",
         min_value=1,
         max_value=72,
         value=42,
-        help="Total simulation time in hours"
+        help="Total simulation time in days"
     )
     
     # Curve fitting
@@ -244,7 +244,7 @@ with col1:
     
     st.markdown(f"""
     **Simulation Configuration:**
-    - ⏱️ **Duration:** {t_max} hours
+    - ⏱️ **Duration:** {t_max} days
     - 📈 **Curve Fitting:** {curve_fit_strength}% strength
     - 🔬 **Initial Conditions:** {ic_source}
     - 🧪 **pH Perturbation:** {ph_info}
@@ -369,9 +369,9 @@ with tab2:
     ### Parameter Guide
     
     **Simulation Duration:**
-    - Standard: 42 hours (captures full dynamics)
-    - Short: 12-24 hours (quick tests)
-    - Extended: 48-72 hours (long-term behavior)
+    - Standard: 42 days (captures full dynamics)
+    - Short: 12-24 days (quick tests)
+    - Extended: 48-72 days (long-term behavior)
     
     **Curve Fitting Strength:**
     - 0%: Pure mechanistic model (MM kinetics only)

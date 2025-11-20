@@ -32,7 +32,7 @@ The app will open at `http://localhost:8501`
 
 1. Go to **🚀 Simulation** page
 2. Configure parameters (or use defaults):
-   - Simulation duration: 42 hours
+   - Simulation duration: 42 days
    - Curve fitting: 50%
    - Initial conditions: JA Final
 3. Click **▶️ Start Simulation**
@@ -132,7 +132,7 @@ The app will open at `http://localhost:8501`
 
 ✅ **DO:**
 - Use clear column names (ATP, Glucose, etc.)
-- Include time column (hours)
+- Include time column (days)
 - Use consistent units (mM)
 - Check for missing values
 
@@ -175,7 +175,7 @@ The app will open at `http://localhost:8501`
 
 2. **Flux Data** (CSV)
    - All reactions
-   - Flux values over time
+   - Flux values over time (mM/day)
    - Grouped by pathway
 
 3. **Bohr Effect** (CSV)

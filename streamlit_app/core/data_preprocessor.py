@@ -233,8 +233,8 @@ class DataPreprocessor:
     
     def convert_time_units(self, df: pd.DataFrame, 
                           time_col: str,
-                          from_unit: str = 'hours',
-                          to_unit: str = 'hours') -> pd.DataFrame:
+                          from_unit: str = 'days',
+                          to_unit: str = 'days') -> pd.DataFrame:
         """
         Convert time units.
         
@@ -256,19 +256,19 @@ class DataPreprocessor:
         """
         df_conv = df.copy()
         
-        # Conversion factors to hours
-        to_hours = {
-            'seconds': 1/3600,
-            'minutes': 1/60,
-            'hours': 1,
-            'days': 24
+        # Conversion factors to days
+        to_days = {
+            'seconds': 1/86400,
+            'minutes': 1/1440,
+            'hours': 1/24,
+            'days': 1
         }
         
         if from_unit == to_unit:
             return df_conv
         
-        # Convert to hours first, then to target
-        factor = to_hours[from_unit] / to_hours[to_unit]
+        # Convert to days first, then to target
+        factor = to_days[from_unit] / to_days[to_unit]
         df_conv[time_col] = df_conv[time_col] * factor
         
         return df_conv
