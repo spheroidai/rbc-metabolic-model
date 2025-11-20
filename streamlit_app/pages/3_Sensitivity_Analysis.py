@@ -284,7 +284,7 @@ if st.session_state['sensitivity_results'] is not None:
     with col1:
         st.markdown("### Top Sensitive Metabolites")
         fig_tornado = plot_metabolite_comparison_tornado(analyzer, n=15)
-        st.plotly_chart(fig_tornado, width="stretch")
+        st.plotly_chart(fig_tornado, use_container_width=True)
     
     with col2:
         st.markdown("### Detailed Comparison")
@@ -301,7 +301,7 @@ if st.session_state['sensitivity_results'] is not None:
         
         if selected_metabolite:
             fig_comparison = plot_side_by_side_comparison(analyzer, selected_metabolite)
-            st.plotly_chart(fig_comparison, width="stretch")
+            st.plotly_chart(fig_comparison, use_container_width=True)
     
     st.markdown("---")
     
@@ -313,7 +313,7 @@ if st.session_state['sensitivity_results'] is not None:
     
     if validation_metrics:
         fig_validation = plot_validation_metrics(validation_metrics)
-        st.plotly_chart(fig_validation, width="stretch")
+        st.plotly_chart(fig_validation, use_container_width=True)
         
         # Metrics table
         with st.expander("📊 Detailed Validation Metrics"):

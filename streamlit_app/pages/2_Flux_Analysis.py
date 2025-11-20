@@ -209,17 +209,17 @@ tab1, tab2, tab3 = st.tabs(["📌 Initial", "⏱️ Midpoint", "🏁 Final"])
 with tab1:
     with st.spinner("Generating initial timepoint distribution..."):
         fig_initial = create_flux_distribution_combined(flux_data, 'initial')
-        st.plotly_chart(fig_initial, width="stretch")
+        st.plotly_chart(fig_initial, use_container_width=True)
 
 with tab2:
     with st.spinner("Generating midpoint distribution..."):
         fig_midpoint = create_flux_distribution_combined(flux_data, 'midpoint')
-        st.plotly_chart(fig_midpoint, width="stretch")
+        st.plotly_chart(fig_midpoint, use_container_width=True)
 
 with tab3:
     with st.spinner("Generating final timepoint distribution..."):
         fig_final = create_flux_distribution_combined(flux_data, 'final')
-        st.plotly_chart(fig_final, width="stretch")
+        st.plotly_chart(fig_final, use_container_width=True)
 
 # Section 2: Detailed Flux Analysis (when reaction selected)
 if selected_reaction != "None":
@@ -236,7 +236,7 @@ if selected_reaction != "None":
         }
         
         detail_fig = create_flux_detail_view(selected_reaction, flux_data, metabolite_results)
-        st.plotly_chart(detail_fig, width="stretch")
+        st.plotly_chart(detail_fig, use_container_width=True)
     
     # Export button for this specific flux
     st.markdown("### 💾 Export This Flux")
@@ -270,7 +270,7 @@ with st.spinner("Generating flux heatmap..."):
     heatmap_fig = create_flux_heatmap(flux_data, metabolite_results)
     
     # Display heatmap
-    st.plotly_chart(heatmap_fig, width="stretch")
+    st.plotly_chart(heatmap_fig, use_container_width=True)
 
 # Debug info (only in development)
 if st.sidebar.checkbox("Show Debug Info", value=False):

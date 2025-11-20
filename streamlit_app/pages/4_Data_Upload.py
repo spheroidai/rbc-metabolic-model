@@ -275,7 +275,7 @@ if uploaded_file is not None:
                     height=500
                 )
                 
-                st.plotly_chart(fig, width="stretch")
+                st.plotly_chart(fig, use_container_width=True)
         
         with tab3:
             st.markdown("### Descriptive Statistics")
