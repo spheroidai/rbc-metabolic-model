@@ -13,12 +13,35 @@ from core.simulation_engine import SimulationEngine, export_results_csv
 from core.plotting import plot_metabolites_interactive, plot_summary_statistics, plot_ph_profile
 from core.bohr_plotting import plot_bohr_overview, plot_bohr_summary_cards, create_bohr_interpretation_text
 from core.data_loader import validate_data_files, get_data_summary
+from core.auth import require_auth, init_session_state, get_user_name, get_user_id, AuthManager
+import time
 
 st.set_page_config(
     page_title="Simulation - RBC Model",
     page_icon="🚀",
     layout="wide"
 )
+
+# Hide default Streamlit navigation
+st.markdown("""
+<style>
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Initialize auth session
+init_session_state()
+
+# Require authentication - check at page load
+if "authenticated" not in st.session_state or not st.session_state.authenticated:
+    st.warning("⚠️ Please log in to access this page")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🔑 Go to Login", width="stretch"):
+            st.switch_page("pages/0_Login.py")
+    st.stop()
 
 # Custom CSS for navigation
 st.markdown("""

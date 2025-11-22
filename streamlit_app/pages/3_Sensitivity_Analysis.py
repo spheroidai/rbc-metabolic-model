@@ -18,12 +18,34 @@ from sensitivity_plotting import (
     plot_validation_metrics,
     create_comparison_summary_cards
 )
+from auth import init_session_state
 
 st.set_page_config(
     page_title="Sensitivity Analysis - RBC Model",
     page_icon="🔬",
     layout="wide"
 )
+
+# Hide default Streamlit navigation
+st.markdown("""
+<style>
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Initialize auth session
+init_session_state()
+
+# Require authentication
+if "authenticated" not in st.session_state or not st.session_state.authenticated:
+    st.warning("⚠️ Please log in to access this page")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🔑 Go to Login", width="stretch"):
+            st.switch_page("pages/0_Login.py")
+    st.stop()
 
 # Custom CSS
 st.markdown("""

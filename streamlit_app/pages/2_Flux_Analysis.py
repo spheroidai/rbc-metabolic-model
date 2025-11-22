@@ -28,6 +28,7 @@ from flux_plotting import (
     create_flux_detail_view,
     export_flux_data_csv
 )
+from auth import init_session_state
 
 # Page configuration
 st.set_page_config(
@@ -35,6 +36,27 @@ st.set_page_config(
     page_icon="🔬",
     layout="wide"
 )
+
+# Hide default Streamlit navigation
+st.markdown("""
+<style>
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Initialize auth session
+init_session_state()
+
+# Require authentication
+if "authenticated" not in st.session_state or not st.session_state.authenticated:
+    st.warning("")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🔑 Go to Login", width="stretch"):
+            st.switch_page("pages/0_Login.py")
+    st.stop()
 
 # Custom CSS for sidebar styling
 st.markdown("""

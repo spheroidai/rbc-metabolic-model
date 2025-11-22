@@ -8,6 +8,11 @@ Based on: Bordbar et al. (2015) RBC metabolic model
 
 import streamlit as st
 from pathlib import Path
+import sys
+
+# Add core to path
+sys.path.insert(0, str(Path(__file__).parent / "core"))
+from auth import init_session_state, get_user_name, get_user_email, AuthManager
 
 # Page configuration
 st.set_page_config(
@@ -23,6 +28,11 @@ st.set_page_config(
 # Custom CSS for styling
 st.markdown("""
 <style>
+    /* Hide default Streamlit navigation */
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+    
     /* Main content styling */
     .main-header {
         font-size: 3.5rem;
@@ -122,9 +132,60 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Initialize auth session
+init_session_state()
+
 # Main header
 st.markdown('<h1 class="main-header">🩸 RBC Metabolic Model</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Interactive Red Blood Cell Metabolism Simulation Platform</p>', unsafe_allow_html=True)
+
+# Authentication status widget
+col_left, col_center, col_right = st.columns([1, 2, 1])
+
+with col_center:
+    if st.session_state.get("authenticated", False):
+        # User is logged in
+        user_name = get_user_name() or "User"
+        user_email = get_user_email() or ""
+        
+        st.success(f"✅ Logged in as **{user_name}**")
+        
+        col_a, col_b, col_c = st.columns(3)
+        
+        with col_a:
+            if st.button("🧪 Simulation", width="stretch", type="primary"):
+                st.switch_page("pages/1_Simulation.py")
+        
+        with col_b:
+            if st.session_state.get("is_admin", False):
+                if st.button("⚙️ Admin", width="stretch"):
+                    st.switch_page("pages/6_Admin.py")
+            else:
+                st.button("⚙️ Admin", width="stretch", disabled=True, 
+                         help="Admin access only")
+        
+        with col_c:
+            if st.button("🚪 Logout", width="stretch"):
+                auth = AuthManager()
+                auth.sign_out()
+                st.session_state.authenticated = False
+                st.session_state.user = None
+                st.session_state.user_profile = None
+                st.session_state.is_admin = False
+                st.rerun()
+    else:
+        # User is not logged in
+        st.info("👋 Please log in to access simulations and analysis tools")
+        
+        col_a, col_b = st.columns(2)
+        
+        with col_a:
+            if st.button("🔑 Login", width="stretch", type="primary"):
+                st.switch_page("pages/0_Login.py")
+        
+        with col_b:
+            if st.button("📝 Sign Up", width="stretch"):
+                st.switch_page("pages/0_Login.py")
 
 # Hero section
 st.markdown("---")
@@ -255,22 +316,43 @@ with st.expander("**3️⃣ Explore Advanced Features**", expanded=False):
 
 st.markdown("---")
 
-# Sidebar information
+# Sidebar navigation
 with st.sidebar:
     st.markdown("---")
-    st.markdown("### 🧭 Navigation Guide")
-    st.success("""
-    **📍 You are on:** Home
     
-    **Main Pages:**
-    - 🏠 **Home** - Overview & introduction
-    - 🚀 **Simulation** - Execute simulations
-    - 🔬 **Flux Analysis** - Metabolic flux analysis
-    - 📊 **Sensitivity Analysis** - Data comparison
-    - 📤 **Data Upload** - Upload custom data
+    # Login button - Gray, first when not authenticated
+    if not st.session_state.get("authenticated", False):
+        if st.button("🔑 Login", width="stretch", key="sidebar_login"):
+            st.switch_page("pages/0_Login.py")
     
-    Navigate using the menu above ☝️
-    """)
+    # Home button - always visible
+    if st.button("🏠 Home", width="stretch", key="sidebar_home"):
+        st.switch_page("app.py")
+    
+    # Main pages - only when authenticated
+    if st.session_state.get("authenticated", False):
+        if st.button("🧪 Simulation", width="stretch", key="sidebar_simulation"):
+            st.switch_page("pages/1_Simulation.py")
+        
+        if st.button("🔬 Flux Analysis", width="stretch", key="sidebar_flux"):
+            st.switch_page("pages/2_Flux_Analysis.py")
+        
+        if st.button("📊 Sensitivity Analysis", width="stretch", key="sidebar_sensitivity"):
+            st.switch_page("pages/3_Sensitivity_Analysis.py")
+        
+        # Data Upload button - Green (primary)
+        if st.button("📤 Data Upload", width="stretch", type="primary", key="sidebar_upload"):
+            st.switch_page("pages/4_Data_Upload.py")
+    
+    st.markdown("---")
+    
+    # Admin access
+    if st.session_state.get("authenticated", False):
+        if st.session_state.get("is_admin", False):
+            if st.button("⚙️ Admin", width="stretch", key="sidebar_admin"):
+                st.switch_page("pages/6_Admin.py")
+        else:
+            st.caption("⚙️ Admin (admins only)")
     
     st.markdown("---")
     
@@ -292,7 +374,7 @@ with st.sidebar:
     st.markdown("""
     - [Documentation](../Documentation/)
     - [GitHub Repository](#)
-    - [Original Paper](https://doi.org/10.1186/s12918-015-0191-7)
+    - [Original Article](https://www.cell.com/action/showPdf?pii=S2405-4712%2815%2900149-0)
     """)
     
     st.markdown("### 💡 Tips")
