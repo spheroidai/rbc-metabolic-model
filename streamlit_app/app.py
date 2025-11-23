@@ -340,6 +340,12 @@ with st.sidebar:
         if st.button("📊 Sensitivity Analysis", width="stretch", key="sidebar_sensitivity"):
             st.switch_page("pages/3_Sensitivity_Analysis.py")
         
+        if st.button("🎯 Parameter Calibration", width="stretch", key="sidebar_calibration"):
+            st.switch_page("pages/5_Parameter_Calibration.py")
+        
+        if st.button("🗺️ Pathway Visualization", width="stretch", key="sidebar_visualization"):
+            st.switch_page("pages/7_Pathway_Visualization.py")
+        
         # Data Upload button - Green (primary)
         if st.button("📤 Data Upload", width="stretch", type="primary", key="sidebar_upload"):
             st.switch_page("pages/4_Data_Upload.py")
