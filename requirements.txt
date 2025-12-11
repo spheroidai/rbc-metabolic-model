@@ -1,20 +1,30 @@
 # ================================================================
-# RBC Metabolic Model - Streamlit Web Application Dependencies
+# RBC Metabolic Model - Python Dependencies
 # ================================================================
-# Streamlit Cloud Compatible (Python 3.11)
+# Compatible with Python 3.11+
+# Supports both Streamlit Web App and CLI usage
 # ================================================================
 
+# Web Framework
 streamlit>=1.28.0
-altair>=5.0.0,<5.4.0  # Avoid 5.4.0+ incompatibility with Python 3.14
+altair>=5.0.0,<6.0.0
+
+# Core Scientific Computing
 numpy>=1.24.0,<2.0.0
 scipy>=1.10.0
 pandas>=2.0.0
+
+# Visualization
 matplotlib>=3.7.0
 plotly>=5.17.0
-networkx>=3.1  # For pathway network graphs
+kaleido>=0.2.1
+
+# Network Analysis
+networkx>=3.1
+
+# Excel File Support
 openpyxl>=3.1.0
 xlrd>=1.2.0
-kaleido>=0.2.1
 
 # Authentication (Supabase)
 supabase>=2.3.4
