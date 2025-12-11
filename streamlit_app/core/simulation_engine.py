@@ -188,7 +188,7 @@ class SimulationEngine:
             model = {'metab': metabolite_list}
             
             # Parse initial conditions
-            ic_file = project_root / "Initial_conditions_JA_Final.xls"
+            ic_file = src_path / "Initial_conditions_JA_Final.xls"
             x0, x0_names = parse_initial_conditions(model, str(ic_file))
             n_metabolites = len(x0)
             

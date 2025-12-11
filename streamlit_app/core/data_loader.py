@@ -43,7 +43,7 @@ def load_experimental_data():
 def _load_experimental_data_cached():
     """Cached version of experimental data loading from file."""
     try:
-        data_path = project_root / "Data_Brodbar_et_al_exp.xlsx"
+        data_path = src_path / "Data_Brodbar_et_al_exp.xlsx"
         df = pd.read_excel(data_path, engine='openpyxl')
         return df
     except Exception as e:
@@ -164,11 +164,11 @@ def validate_data_files():
             'initial_conditions': True  # Will use uploaded data first timepoint
         }
     
-    # Otherwise check physical files
+    # Otherwise check physical files in src directory
     required_files = {
-        'experimental_data': project_root / "Data_Brodbar_et_al_exp.xlsx",
-        'fitted_params': project_root / "Data_Brodbar_et_al_exp_fitted_params.csv",
-        'initial_conditions': project_root / "Initial_conditions_JA_Final.xls"
+        'experimental_data': src_path / "Data_Brodbar_et_al_exp.xlsx",
+        'fitted_params': src_path / "Data_Brodbar_et_al_exp_fitted_params.csv",
+        'initial_conditions': src_path / "Initial_conditions_JA_Final.xls"
     }
     
     status = {}
