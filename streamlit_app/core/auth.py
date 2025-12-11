@@ -437,3 +437,44 @@ def get_user_name() -> Optional[str]:
     if st.session_state.get("user_profile"):
         return st.session_state.user_profile.get("full_name", "User")
     return "User"
+
+
+def check_page_auth(require_admin: bool = False) -> bool:
+    """
+    Check authentication and show login prompt if needed.
+    Call this at the top of protected pages instead of the repetitive pattern.
+    
+    Usage:
+        from core.auth import init_session_state, check_page_auth
+        init_session_state()
+        if not check_page_auth():
+            st.stop()
+    
+    Args:
+        require_admin: If True, also check for admin role
+        
+    Returns:
+        True if authenticated (and admin if required), False otherwise
+    """
+    # Check basic authentication
+    if "authenticated" not in st.session_state or not st.session_state.authenticated:
+        st.warning("⚠️ Please log in to access this page")
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🔑 Go to Login", use_container_width=True):
+                st.switch_page("pages/0_Login.py")
+        return False
+    
+    # Check admin requirement
+    if require_admin and not st.session_state.get("is_admin", False):
+        st.error("🔒 Admin access required")
+        st.info("This page is restricted to administrators only.")
+        return False
+    
+    # Check if user is active
+    if not st.session_state.get("is_active", True):
+        st.error("🚫 Account deactivated")
+        st.info("Your account has been deactivated. Please contact an administrator.")
+        return False
+    
+    return True

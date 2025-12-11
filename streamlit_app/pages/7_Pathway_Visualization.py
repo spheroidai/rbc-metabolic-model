@@ -23,6 +23,7 @@ from pathway_visualization import (
     create_3d_metabolite_heatmap,
     create_hierarchical_clustering
 )
+from styles import apply_global_styles
 
 # Page config
 st.set_page_config(
@@ -31,14 +32,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# Hide default navigation
-st.markdown("""
-<style>
-    [data-testid="stSidebarNav"] {
-        display: none;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Apply global styles
+apply_global_styles()
 
 # Authentication
 user = require_auth()

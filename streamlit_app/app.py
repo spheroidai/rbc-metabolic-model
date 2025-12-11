@@ -13,6 +13,7 @@ import sys
 # Add core to path
 sys.path.insert(0, str(Path(__file__).parent / "core"))
 from auth import init_session_state, get_user_name, get_user_email, AuthManager
+from styles import apply_global_styles, render_gradient_divider, render_metric_card, render_feature_card, render_info_box, render_footer
 
 # Page configuration
 st.set_page_config(
@@ -25,173 +26,8 @@ st.set_page_config(
     }
 )
 
-# Modern CSS with fade red gradient theme
-st.markdown("""
-<style>
-    /* Hide default Streamlit navigation */
-    [data-testid="stSidebarNav"] {
-        display: none;
-    }
-    
-    /* Root variables for consistent theming */
-    :root {
-        --red-50: #FEF2F2;
-        --red-100: #FEE2E2;
-        --red-200: #FECACA;
-        --red-300: #FCA5A5;
-        --red-400: #F87171;
-        --red-500: #EF4444;
-        --red-600: #DC2626;
-        --red-700: #B91C1C;
-        --red-800: #991B1B;
-        --red-900: #7F1D1D;
-        --gray-50: #F9FAFB;
-        --gray-100: #F3F4F6;
-        --gray-600: #4B5563;
-        --gray-800: #1F2937;
-    }
-    
-    /* Hero header with gradient text */
-    .hero-header {
-        font-size: 3.5rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 50%, #7F1D1D 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-align: center;
-        margin-bottom: 0.5rem;
-        letter-spacing: -0.02em;
-    }
-    
-    .hero-subtitle {
-        font-size: 1.25rem;
-        color: var(--gray-600);
-        text-align: center;
-        margin-bottom: 2rem;
-        font-weight: 400;
-    }
-    
-    /* Modern feature cards */
-    .feature-card {
-        background: linear-gradient(145deg, #FFFFFF 0%, var(--red-50) 100%);
-        padding: 1.75rem;
-        border-radius: 16px;
-        border: 1px solid var(--red-100);
-        box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1), 0 2px 4px -1px rgba(220, 38, 38, 0.06);
-        height: 100%;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    .feature-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 25px -5px rgba(220, 38, 38, 0.15), 0 10px 10px -5px rgba(220, 38, 38, 0.08);
-        border-color: var(--red-200);
-    }
-    
-    .feature-card h4 {
-        color: var(--red-700);
-        font-weight: 700;
-        margin-bottom: 0.75rem;
-    }
-    
-    /* Metric cards with gradient */
-    .metric-card {
-        background: linear-gradient(135deg, var(--red-500) 0%, var(--red-700) 100%);
-        padding: 1.5rem;
-        border-radius: 12px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.3);
-    }
-    
-    .metric-card .value {
-        font-size: 2.5rem;
-        font-weight: 800;
-        line-height: 1;
-    }
-    
-    .metric-card .label {
-        font-size: 0.875rem;
-        opacity: 0.9;
-        margin-top: 0.5rem;
-        font-weight: 500;
-    }
-    
-    /* Glass morphism welcome card */
-    .welcome-card {
-        background: linear-gradient(135deg, rgba(254, 242, 242, 0.9) 0%, rgba(254, 226, 226, 0.7) 100%);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(220, 38, 38, 0.1);
-        border-radius: 20px;
-        padding: 2rem;
-        margin: 1rem 0;
-    }
-    
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, var(--gray-50) 0%, var(--red-50) 100%);
-    }
-    
-    /* Button styling */
-    .stButton > button {
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
-    }
-    
-    /* Divider with gradient */
-    .gradient-divider {
-        height: 3px;
-        background: linear-gradient(90deg, transparent 0%, var(--red-300) 50%, transparent 100%);
-        border: none;
-        margin: 2rem 0;
-        border-radius: 2px;
-    }
-    
-    /* Section headers */
-    .section-header {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--gray-800);
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    /* Info boxes */
-    .info-box {
-        background: linear-gradient(135deg, var(--red-50) 0%, white 100%);
-        border-left: 4px solid var(--red-500);
-        padding: 1rem 1.25rem;
-        border-radius: 0 12px 12px 0;
-        margin: 1rem 0;
-    }
-    
-    /* Footer styling */
-    .footer {
-        text-align: center;
-        padding: 2rem;
-        color: var(--gray-600);
-        background: linear-gradient(180deg, transparent 0%, var(--red-50) 100%);
-        border-radius: 20px 20px 0 0;
-        margin-top: 2rem;
-    }
-    
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background: linear-gradient(90deg, var(--red-50) 0%, white 100%);
-        border-radius: 10px;
-        font-weight: 600;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Apply global styles
+apply_global_styles()
 
 # Initialize auth session
 init_session_state()
@@ -249,7 +85,7 @@ with col_center:
                 st.switch_page("pages/0_Login.py")
 
 # Hero section with gradient divider
-st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+render_gradient_divider()
 
 col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -271,7 +107,7 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+render_gradient_divider()
 
 # Features section with modern cards
 st.markdown('<p class="section-header">🚀 Key Features</p>', unsafe_allow_html=True)
@@ -314,7 +150,7 @@ with col3:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+render_gradient_divider()
 
 # Model statistics with custom metric cards
 st.markdown('<p class="section-header">📈 Model Statistics</p>', unsafe_allow_html=True)
@@ -353,7 +189,7 @@ with col4:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+render_gradient_divider()
 
 # Quick start guide
 st.markdown('<p class="section-header">🎯 Quick Start Guide</p>', unsafe_allow_html=True)
@@ -467,9 +303,4 @@ with st.sidebar:
     st.caption("Developed by Jorgelindo da Veiga • 2025")
 
 # Footer with gradient
-st.markdown("""
-<div class="footer">
-    <p style="font-size: 1.1rem; font-weight: 600; color: #B91C1C; margin-bottom: 0.5rem;">Ready to explore RBC metabolism?</p>
-    <p style="margin: 0;">👈 Select a page from the sidebar to get started!</p>
-</div>
-""", unsafe_allow_html=True)
+render_footer()

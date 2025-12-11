@@ -14,6 +14,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from core.auth import AuthManager, init_session_state
+from core.styles import apply_login_styles
 
 st.set_page_config(
     page_title="Login - RBC Metabolic Model",
@@ -22,38 +23,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Apply login-specific styles (red theme instead of purple)
+apply_login_styles()
+
 # Initialize session state
 init_session_state()
 
 # Initialize auth manager
 auth = AuthManager()
-
-# Custom CSS for login page
-st.markdown("""
-    <style>
-    /* Hide default Streamlit navigation */
-    [data-testid="stSidebarNav"] {
-        display: none;
-    }
-    
-    .main {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 24px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        padding-left: 24px;
-        padding-right: 24px;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: rgba(255, 255, 255, 0.3);
-    }
-    </style>
-""", unsafe_allow_html=True)
 
 # Check if already authenticated
 if st.session_state.authenticated:

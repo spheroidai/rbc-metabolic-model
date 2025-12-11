@@ -18,7 +18,8 @@ from sensitivity_plotting import (
     plot_validation_metrics,
     create_comparison_summary_cards
 )
-from auth import init_session_state
+from auth import init_session_state, check_page_auth
+from styles import apply_global_styles
 
 st.set_page_config(
     page_title="Sensitivity Analysis - RBC Model",
@@ -26,112 +27,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# Hide default Streamlit navigation
-st.markdown("""
-<style>
-    [data-testid="stSidebarNav"] {
-        display: none;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Apply global styles
+apply_global_styles()
 
-# Initialize auth session
+# Initialize and check authentication
 init_session_state()
-
-# Require authentication
-if "authenticated" not in st.session_state or not st.session_state.authenticated:
-    st.warning("⚠️ Please log in to access this page")
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("🔑 Go to Login", width="stretch"):
-            st.switch_page("pages/0_Login.py")
+if not check_page_auth():
     st.stop()
-
-# Custom CSS
-st.markdown("""
-    <style>
-    .stMetric {
-        background-color: #f0f2f6;
-        padding: 10px;
-        border-radius: 5px;
-    }
-    .comparison-card {
-        background-color: #e8f4f8;
-        padding: 15px;
-        border-radius: 10px;
-        border-left: 5px solid #1f77b4;
-    }
-    
-    /* Sidebar navigation styling */
-    [data-testid="stSidebarNav"] {
-        padding-top: 2rem;
-    }
-    
-    /* Highlight main navigation pages */
-    [data-testid="stSidebarNav"] ul li:first-child a,
-    [data-testid="stSidebarNav"] ul li:nth-child(2) a {
-        background: linear-gradient(90deg, #FF4B4B 0%, #FF6B6B 100%);
-        color: white !important;
-        font-weight: 700;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        margin-bottom: 0.5rem;
-        box-shadow: 0 2px 8px rgba(255, 75, 75, 0.3);
-        transition: all 0.3s ease;
-    }
-    
-    [data-testid="stSidebarNav"] ul li:first-child a:hover,
-    [data-testid="stSidebarNav"] ul li:nth-child(2) a:hover {
-        transform: translateX(5px);
-        box-shadow: 0 4px 12px rgba(255, 75, 75, 0.4);
-    }
-    
-    /* Replace "app" with "Home" in navigation */
-    [data-testid="stSidebarNav"] ul li:first-child a span {
-        font-size: 0;
-    }
-    
-    [data-testid="stSidebarNav"] ul li:first-child a span::before {
-        content: "🏠 Home";
-        font-size: 1rem;
-        font-weight: 700;
-        display: inline-block;
-    }
-    
-    /* Add rocket emoji and style to Simulation */
-    [data-testid="stSidebarNav"] ul li:nth-child(2) a span {
-        font-weight: 700;
-        font-size: 1rem;
-    }
-    
-    [data-testid="stSidebarNav"] ul li:nth-child(2) a span::before {
-        content: "🚀 ";
-        margin-right: 0.25rem;
-    }
-    
-    /* Style Data Upload button (5th item) in green */
-    [data-testid="stSidebarNav"] ul li:nth-child(5) a {
-        background: linear-gradient(90deg, #28a745 0%, #34ce57 100%);
-        color: white !important;
-        font-weight: 700;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        margin-bottom: 0.5rem;
-        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
-        transition: all 0.3s ease;
-    }
-    
-    [data-testid="stSidebarNav"] ul li:nth-child(5) a:hover {
-        transform: translateX(5px);
-        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-    }
-    
-    [data-testid="stSidebarNav"] ul li:nth-child(5) a span::before {
-        content: "📤 ";
-        margin-right: 0.25rem;
-    }
-    </style>
-""", unsafe_allow_html=True)
 
 # Title
 st.title("🔬 Sensitivity Analysis")

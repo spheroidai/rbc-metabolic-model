@@ -16,6 +16,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from core.auth import AuthManager, init_session_state, require_auth, get_user_name
+from core.styles import apply_global_styles
 
 st.set_page_config(
     page_title="Admin Dashboard - RBC Model",
@@ -23,14 +24,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# Hide default Streamlit navigation
-st.markdown("""
-<style>
-    [data-testid="stSidebarNav"] {
-        display: none;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Apply global styles
+apply_global_styles()
 
 # Initialize session state
 init_session_state()
