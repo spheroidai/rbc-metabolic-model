@@ -8,6 +8,13 @@ import math
 import pandas as pd
 from typing import Dict, Tuple, Optional
 from numpy.typing import NDArray
+from pathlib import Path
+
+# Get src directory for data file paths
+_THIS_FILE = Path(__file__).resolve()
+_SRC_DIR = _THIS_FILE.parent  # This file is in src/
+_DATA_FILE = _SRC_DIR / "Data_Brodbar_et_al_exp.xlsx"
+_IC_FILE = _SRC_DIR / "Initial_conditions_JA_Final.xls"
 
 # Global flux tracking
 _FLUX_TRACKER = None
@@ -217,13 +224,13 @@ def _normalize_name(n: str) -> str:
     n = n.replace('+', '')  # e.g., NAD+ -> NAD
     return n
 
-def _load_experimental_first_values(path: str = 'Data_Brodbar_et_al_exp.xlsx') -> None:
+def _load_experimental_first_values(path: str = None) -> None:
     """Load experimental first time point values for conservation pool calculations.
     
     Parameters:
     -----------
-    path : str
-        Path to Excel file with experimental data
+    path : str, optional
+        Path to Excel file with experimental data. If None, uses default project path.
         
     Returns:
     --------
@@ -233,6 +240,11 @@ def _load_experimental_first_values(path: str = 'Data_Brodbar_et_al_exp.xlsx') -
     global EXP_FIRST_VALUES, TOTALS
     if EXP_FIRST_VALUES:
         return  # already loaded
+    
+    # Use absolute path from project root if no path specified
+    if path is None:
+        path = _DATA_FILE
+    
     try:
         df = pd.read_excel(path)
         # Normalize names to improve matching (handle NAD+/NADP+ etc.)
@@ -383,19 +395,22 @@ BRODBAR_METABOLITE_MAP = {
     'PHE': 107   # pHe (extracellular pH) - added when pH perturbation is active
 }
 
-def load_brodbar_initial_conditions(data_path: str = "Initial_conditions_JA_Final.xls") -> NDArray[np.float64]:
+def load_brodbar_initial_conditions(data_path: str = None) -> NDArray[np.float64]:
     """Load experimental initial conditions from Brodbar data file.
     
     Parameters:
     -----------
-    data_path : str
-        Path to Excel file with initial conditions
+    data_path : str, optional
+        Path to Excel file with initial conditions. If None, uses default src path.
         
     Returns:
     --------
     NDArray[np.float64]
         Initial conditions vector for 107 metabolites (106 base + pHi)
     """
+    if data_path is None:
+        data_path = _IC_FILE
+    
     try:
         df = pd.read_excel(data_path, sheet_name=0, header=None)
         # First row contains time points, first column contains metabolite names

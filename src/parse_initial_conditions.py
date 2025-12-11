@@ -6,7 +6,11 @@ import os
 import numpy as np
 import pandas as pd
 from pathlib import Path
-# from load_experimental_initial_conditions import create_experimental_initial_vector
+
+# Get src directory for data file paths
+_THIS_FILE = Path(__file__).resolve()
+_SRC_DIR = _THIS_FILE.parent  # This file is in src/
+_DATA_FILE = _SRC_DIR / "Data_Brodbar_et_al_exp.xlsx"
 
 
 def parse_initial_conditions(model, file_path):
@@ -33,7 +37,7 @@ def parse_initial_conditions(model, file_path):
     
     # Load experimental data - use first experimental time point as initial conditions
     try:
-        df = pd.read_excel('Data_Brodbar_et_al_exp.xlsx', engine='openpyxl')
+        df = pd.read_excel(_DATA_FILE, engine='openpyxl')
         exp_metabolites = df.iloc[:, 0].tolist()  # First column (metabolite names)
         exp_values = df.iloc[:, 1].tolist()      # Second column (first time point values)
         

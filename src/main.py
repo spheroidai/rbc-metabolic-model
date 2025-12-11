@@ -29,6 +29,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
+# Get src directory for data file paths
+_THIS_FILE = Path(__file__).resolve()
+_SRC_DIR = _THIS_FILE.parent  # This file is in src/
+_DATA_FILE = _SRC_DIR / "Data_Brodbar_et_al_exp.xlsx"
+_IC_FILE = _SRC_DIR / "Initial_conditions_JA_Final.xls"
+
 # Import custom modules
 from curve_fit import curve_fit_ja
 from parse import parse
@@ -215,7 +221,7 @@ def main():
     # Load experimental data only from Data_Brodbar_et_al_exp.xlsx
     try:
         import pandas as pd
-        df = pd.read_excel('Data_Brodbar_et_al_exp.xlsx')
+        df = pd.read_excel(_DATA_FILE)
         
         # Extract metabolite names and data
         meta_names2 = df.iloc[:, 0].tolist()  # First column contains metabolite names
@@ -277,25 +283,14 @@ def main():
     
     # Parse initial conditions
     print("Setting up initial conditions...")
-    # Try multiple possible paths for initial conditions file
-    ic_file_paths = [
-        "Initial_conditions_JA_Final.xls",
-        "initial_conditions_JA_Final.xls", 
-        os.path.join("..", "Initial_conditions_JA_Final.xls"),
-        "Initial_conditions_JA_Finals.xls"  # User's corrected filename
-    ]
-    
+    # Use absolute path for initial conditions file
     x0, x0_names = None, None
-    for path in ic_file_paths:
-        if os.path.exists(path):
-            print(f"Found initial conditions file at: {path}")
-            try:
-                x0, x0_names = parse_initial_conditions(model, path)
-                if x0 is not None:
-                    break
-            except Exception as e:
-                print(f"Error parsing {path}: {e}")
-                continue
+    if _IC_FILE.exists():
+        print(f"Found initial conditions file at: {_IC_FILE}")
+        try:
+            x0, x0_names = parse_initial_conditions(model, str(_IC_FILE))
+        except Exception as e:
+            print(f"Error parsing {_IC_FILE}: {e}")
     
     if x0 is None:
         print("Warning: Could not parse initial conditions from file. Using defaults...")
