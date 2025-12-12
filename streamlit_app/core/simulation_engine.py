@@ -130,7 +130,7 @@ class SimulationEngine:
             # Same strategy as main.py: load directly from Excel with pandas
             try:
                 import pandas as pd
-                data_file = project_root / "Data_Brodbar_et_al_exp.xlsx"
+                data_file = src_path / "Data_Brodbar_et_al_exp.xlsx"
                 df = pd.read_excel(data_file)
                 
                 # Extract metabolite names and data (same as CLI main.py)
