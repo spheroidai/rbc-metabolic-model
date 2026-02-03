@@ -13,7 +13,7 @@ class SensitivityAnalyzer:
     
     NEW APPROACH: Since the ODE simulation doesn't change with different experimental data
     (it's governed by kinetic laws), we instead analyze:
-    1. How well simulation fits Brodbar data vs Custom data (residuals analysis)
+    1. How well simulation fits Bordbar data vs Custom data (residuals analysis)
     2. Which metabolites show the biggest discrepancies
     3. Statistical validation metrics
     """
@@ -51,7 +51,7 @@ class SensitivityAnalyzer:
     
     def compare_metabolite_concentrations(self) -> pd.DataFrame:
         """
-        Compare EXPERIMENTAL datasets (Brodbar vs Custom) directly.
+        Compare EXPERIMENTAL datasets (Bordbar vs Custom) directly.
         
         Returns:
         --------
@@ -107,9 +107,9 @@ class SensitivityAnalyzer:
             
             results.append({
                 'Metabolite': met_name,
-                'Brodbar_Mean': mean_b,
+                'Bordbar_Mean': mean_b,
                 'Custom_Mean': mean_c,
-                'Brodbar_Std': std_b,
+                'Bordbar_Std': std_b,
                 'Custom_Std': std_c,
                 'Mean_Difference': mean_diff,
                 'Max_Difference': max_diff,
@@ -299,11 +299,11 @@ def run_comparative_simulation(use_custom_data: bool = False) -> Optional[Dict]:
     """
     from simulation_engine import SimulationEngine
     
-    # Temporarily set to use Brodbar data (default)
+    # Temporarily set to use Bordbar data (default)
     original_mode = st.session_state.get('uploaded_data_mode', None)
     original_active = st.session_state.get('uploaded_data_active', False)
     
-    # Always use Brodbar for simulation (ODE doesn't change anyway)
+    # Always use Bordbar for simulation (ODE doesn't change anyway)
     st.session_state['uploaded_data_active'] = False
     
     # Run simulation
@@ -311,7 +311,7 @@ def run_comparative_simulation(use_custom_data: bool = False) -> Optional[Dict]:
     
     try:
         # Use default curve_fit_strength to get reasonable simulation
-        # that follows the model dynamics with some influence from Brodbar data
+        # that follows the model dynamics with some influence from Bordbar data
         results = engine.run_simulation(
             t_max=42,
             curve_fit_strength=0.5,  # Moderate influence from experimental data

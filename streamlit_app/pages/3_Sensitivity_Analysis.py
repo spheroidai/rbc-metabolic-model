@@ -53,7 +53,7 @@ st.info("""
 
 Since the RBC model is governed by fixed kinetic laws (ODEs), changing experimental data doesn't change the simulation dynamics. Instead, this analysis:
 
-**Compares YOUR experimental measurements vs Brodbar et al. measurements:**
+**Compares YOUR experimental measurements vs Bordbar et al. measurements:**
 1. **Direct Comparison**: Shows which metabolites have different measured values
 2. **Statistical Analysis**: Calculates mean, std, RMSE between the two datasets
 3. **Validation Metrics**: How well the model fits each dataset (R², RMSE, MAE)
@@ -64,7 +64,7 @@ Since the RBC model is governed by fixed kinetic laws (ODEs), changing experimen
 - ✅ **Validation Quality**: How well the model captures your experimental observations
 
 **Interpretation:**
-- **Large differences (>20%)**: Your measurements differ significantly from Brodbar
+- **Large differences (>20%)**: Your measurements differ significantly from Bordbar
 - **Small differences (<5%)**: Good consistency between datasets ✅
 - **Validation metrics**: R² > 0.9 = excellent model fit to your data
 """)
@@ -84,7 +84,7 @@ with st.expander("💡 How to Use Sensitivity Analysis", expanded=False):
     st.markdown("""
     ### What is Sensitivity Analysis?
     
-    This tool compares how your **custom experimental data** affects the model predictions compared to the **original Brodbar et al. data**.
+    This tool compares how your **custom experimental data** affects the model predictions compared to the **original Bordbar et al. data**.
     
     ### What You'll See:
     
@@ -186,11 +186,11 @@ if st.session_state['sensitivity_results'] is not None:
     
     Metabolic fluxes are determined by the **kinetic laws** governing the RBC metabolic network, not by experimental measurements. 
     
-    Both simulations (with Brodbar data or custom data) use the **same ODE system** with fixed kinetic parameters, 
+    Both simulations (with Bordbar data or custom data) use the **same ODE system** with fixed kinetic parameters, 
     so they produce nearly identical flux distributions.
     
     **What's actually compared:**
-    - ✅ Your experimental **measurements** vs Brodbar measurements
+    - ✅ Your experimental **measurements** vs Bordbar measurements
     - ✅ How well the **simulation** fits each dataset
     - ✅ Which metabolites show the biggest **measurement differences**
     
@@ -285,7 +285,7 @@ if st.session_state['sensitivity_results'] is not None:
         st.markdown("### Data Sources")
         st.markdown(f"""
         - **Custom Data**: {overall_stats['n_timepoints_custom']} timepoints
-        - **Brodbar Data**: {overall_stats['n_timepoints_brodbar']} timepoints
+        - **Bordbar Data**: {overall_stats['n_timepoints_brodbar']} timepoints
         - **Timepoint Match**: {overall_stats['simulation_match']}
         """)
     

@@ -130,7 +130,7 @@ class SimulationEngine:
             # Same strategy as main.py: load directly from Excel with pandas
             try:
                 import pandas as pd
-                data_file = src_path / "Data_Brodbar_et_al_exp.xlsx"
+                data_file = src_path / "Data_Bordbar_et_al_exp.xlsx"
                 df = pd.read_excel(data_file)
                 
                 # Extract metabolite names and data (same as CLI main.py)
@@ -180,7 +180,7 @@ class SimulationEngine:
             if progress_callback:
                 progress_callback(0.2, "Setting up initial conditions...")
             
-            # Create model structure for Brodbar
+            # Create model structure for Bordbar
             metabolite_list = [''] * 107
             for name, idx in BRODBAR_METABOLITE_MAP.items():
                 if idx < 107:

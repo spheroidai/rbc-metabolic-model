@@ -64,7 +64,7 @@ with tab1:
             # Load default data
             try:
                 # Load and transpose Bordbar data
-                df_raw = pd.read_excel("Data_Brodbar_et_al_exp.xlsx")
+                df_raw = pd.read_excel("Data_Bordbar_et_al_exp.xlsx")
                 
                 # First column contains metabolite names, rest are time points
                 metabolite_names = df_raw['Conc / mM'].values

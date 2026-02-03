@@ -16,7 +16,7 @@ Features:
 Requirements:
 -------------
 - numpy, pandas, matplotlib, scipy
-- Excel data files: Data_Brodbar_et_al_exp.xlsx, Initial_conditions_JA_Final.xls
+- Excel data files: Data_Bordbar_et_al_exp.xlsx, Initial_conditions_JA_Final.xls
 - Reaction network definition: RBC/Rxn_RBC.txt
 
 Author: Jorgelindo da Veiga
@@ -32,7 +32,7 @@ from pathlib import Path
 # Get src directory for data file paths
 _THIS_FILE = Path(__file__).resolve()
 _SRC_DIR = _THIS_FILE.parent  # This file is in src/
-_DATA_FILE = _SRC_DIR / "Data_Brodbar_et_al_exp.xlsx"
+_DATA_FILE = _SRC_DIR / "Data_Bordbar_et_al_exp.xlsx"
 _IC_FILE = _SRC_DIR / "Initial_conditions_JA_Final.xls"
 
 # Import custom modules
@@ -96,7 +96,7 @@ def main():
     --------------
     - Simulates 107 metabolites (106 base metabolites + pHi)
     - Integration time: t=1 to t=42 hours (RBC storage conditions)
-    - Uses experimental data from Data_Brodbar_et_al_exp.xlsx
+    - Uses experimental data from Data_Bordbar_et_al_exp.xlsx
     - Implements pure Michaelis-Menten kinetics
     
     Outputs:
@@ -218,7 +218,7 @@ def main():
     
     # Process the experimental data with curve fitting
     print("Processing experimental data...")
-    # Load experimental data only from Data_Brodbar_et_al_exp.xlsx
+    # Load experimental data only from Data_Bordbar_et_al_exp.xlsx
     try:
         import pandas as pd
         df = pd.read_excel(_DATA_FILE)
@@ -232,16 +232,16 @@ def main():
         
         print(f"Loaded experimental data: {len(meta_names2)} metabolites, {len(tempsexp2)} time points")
         
-        # No first dataset - only use Data_Brodbar_et_al_exp.xlsx
+        # No first dataset - only use Data_Bordbar_et_al_exp.xlsx
         meta_names1, metabolites1, tempsexp1 = [], None, None
         
     except Exception as e:
-        print(f"Error: Could not load experimental data from Data_Brodbar_et_al_exp.xlsx: {e}")
+        print(f"Error: Could not load experimental data from Data_Bordbar_et_al_exp.xlsx: {e}")
         meta_names1, metabolites1, tempsexp1 = [], None, None
         meta_names2, metabolites2, tempsexp2 = [], None, None
     
     # Note: Initial conditions are now handled directly in parse_initial_conditions.py
-    # which loads experimental data from Data_Brodbar_et_al_exp.xlsx
+    # which loads experimental data from Data_Bordbar_et_al_exp.xlsx
     
     # Parse the reaction network (only for original model)
     # Brodbar model uses equations directly from equadiff_brodbar.py

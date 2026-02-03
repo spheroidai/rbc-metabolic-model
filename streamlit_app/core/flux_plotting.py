@@ -480,3 +480,354 @@ def export_flux_data_csv(flux_data: Dict) -> str:
     df_data.update(flux_data['fluxes'])
     df = pd.DataFrame(df_data)
     return df.to_csv(index=False)
+
+
+def create_flux_comparison_plot(simulated_flux: Dict, experimental_flux: Dict,
+                                 reactions: List[str] = None) -> go.Figure:
+    """
+    Create comparison plot of simulated vs experimental-derived fluxes.
+    
+    Parameters:
+    -----------
+    simulated_flux : dict
+        Flux data from simulation
+    experimental_flux : dict
+        Flux data from experimental concentrations
+    reactions : list, optional
+        Specific reactions to compare. If None, selects top 10 by variance.
+        
+    Returns:
+    --------
+    go.Figure
+        Comparison figure with subplots
+    """
+    sim_times = np.array(simulated_flux['times'])
+    exp_times = np.array(experimental_flux['times'])
+    
+    # Find common reactions
+    common_rxns = set(simulated_flux['fluxes'].keys()) & set(experimental_flux['fluxes'].keys())
+    
+    if reactions is None:
+        # Select top reactions by variance in simulated data
+        variances = {}
+        for rxn in common_rxns:
+            variances[rxn] = np.var(simulated_flux['fluxes'][rxn])
+        reactions = sorted(variances.keys(), key=lambda x: variances[x], reverse=True)[:10]
+    else:
+        reactions = [r for r in reactions if r in common_rxns]
+    
+    if not reactions:
+        # Return empty figure with message
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No common reactions found between datasets",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(size=16)
+        )
+        return fig
+    
+    # Create subplots
+    n_cols = 2
+    n_rows = (len(reactions) + 1) // 2
+    
+    fig = make_subplots(
+        rows=n_rows, cols=n_cols,
+        subplot_titles=[f'<b>{rxn}</b>' for rxn in reactions],
+        vertical_spacing=0.08,
+        horizontal_spacing=0.1
+    )
+    
+    for idx, rxn in enumerate(reactions):
+        row = idx // n_cols + 1
+        col = idx % n_cols + 1
+        
+        sim_values = simulated_flux['fluxes'][rxn]
+        exp_values = experimental_flux['fluxes'][rxn]
+        
+        # Simulated flux
+        fig.add_trace(
+            go.Scatter(
+                x=sim_times,
+                y=sim_values,
+                mode='lines',
+                name=f'{rxn} (Simulated)',
+                line=dict(color='#3498db', width=2),
+                legendgroup=rxn,
+                showlegend=(idx == 0),
+                hovertemplate=f'<b>{rxn} Simulated</b><br>Time: %{{x:.1f}}d<br>Flux: %{{y:.4f}}<extra></extra>'
+            ),
+            row=row, col=col
+        )
+        
+        # Experimental-derived flux
+        fig.add_trace(
+            go.Scatter(
+                x=exp_times,
+                y=exp_values,
+                mode='lines+markers',
+                name=f'{rxn} (Experimental)',
+                line=dict(color='#e74c3c', width=2, dash='dot'),
+                marker=dict(size=6),
+                legendgroup=rxn,
+                showlegend=(idx == 0),
+                hovertemplate=f'<b>{rxn} Experimental</b><br>Time: %{{x:.1f}}d<br>Flux: %{{y:.4f}}<extra></extra>'
+            ),
+            row=row, col=col
+        )
+    
+    fig.update_layout(
+        title=dict(
+            text='<b>Flux Comparison: Simulated vs Experimental-Derived</b>',
+            x=0.5,
+            xanchor='center'
+        ),
+        height=300 * n_rows,
+        showlegend=True,
+        legend=dict(
+            orientation='h',
+            yanchor='bottom',
+            y=1.02,
+            xanchor='center',
+            x=0.5
+        )
+    )
+    
+    # Update all axes
+    fig.update_xaxes(title_text="Time (days)")
+    fig.update_yaxes(title_text="Flux (mM/day)")
+    
+    return fig
+
+
+def create_flux_deviation_heatmap(simulated_flux: Dict, experimental_flux: Dict) -> go.Figure:
+    """
+    Create heatmap showing deviation between simulated and experimental fluxes.
+    
+    Parameters:
+    -----------
+    simulated_flux : dict
+        Flux data from simulation
+    experimental_flux : dict
+        Flux data from experimental concentrations
+        
+    Returns:
+    --------
+    go.Figure
+        Heatmap of flux deviations
+    """
+    common_rxns = list(set(simulated_flux['fluxes'].keys()) & set(experimental_flux['fluxes'].keys()))
+    
+    if not common_rxns:
+        fig = go.Figure()
+        fig.add_annotation(text="No common reactions", x=0.5, y=0.5)
+        return fig
+    
+    # Calculate statistics for each reaction
+    deviations = []
+    for rxn in common_rxns:
+        sim_mean = np.mean(np.abs(simulated_flux['fluxes'][rxn]))
+        exp_mean = np.mean(np.abs(experimental_flux['fluxes'][rxn]))
+        
+        if exp_mean > 1e-10:
+            dev = (sim_mean - exp_mean) / exp_mean * 100
+        else:
+            dev = 0.0
+        deviations.append(dev)
+    
+    # Sort by absolute deviation
+    sorted_idx = np.argsort(np.abs(deviations))[::-1]
+    sorted_rxns = [common_rxns[i] for i in sorted_idx[:30]]  # Top 30
+    sorted_devs = [deviations[i] for i in sorted_idx[:30]]
+    
+    # Create bar chart
+    colors = ['#e74c3c' if d > 0 else '#3498db' for d in sorted_devs]
+    
+    fig = go.Figure(data=[
+        go.Bar(
+            y=sorted_rxns,
+            x=sorted_devs,
+            orientation='h',
+            marker=dict(color=colors),
+            text=[f'{d:.1f}%' for d in sorted_devs],
+            textposition='outside',
+            hovertemplate='<b>%{y}</b><br>Deviation: %{x:.1f}%<extra></extra>'
+        )
+    ])
+    
+    fig.update_layout(
+        title=dict(
+            text='<b>Flux Deviation: Simulated vs Experimental</b><br><sub>Positive = Simulation higher, Negative = Simulation lower</sub>',
+            x=0.5,
+            xanchor='center'
+        ),
+        xaxis_title='Deviation (%)',
+        yaxis_title='Reaction',
+        height=max(400, len(sorted_rxns) * 25),
+        margin=dict(l=120)
+    )
+    
+    return fig
+
+
+def create_experimental_flux_summary(exp_flux_data: Dict, timepoint: str = 'final') -> go.Figure:
+    """
+    Create summary visualization of experimental-derived fluxes.
+    
+    Parameters:
+    -----------
+    exp_flux_data : dict
+        Flux data computed from experimental concentrations
+    timepoint : str
+        'initial', 'midpoint', or 'final'
+        
+    Returns:
+    --------
+    go.Figure
+        Summary figure
+    """
+    times = np.array(exp_flux_data['times'])
+    fluxes = exp_flux_data['fluxes']
+    
+    # Determine time index
+    if timepoint == 'initial':
+        t_idx = 0
+    elif timepoint == 'midpoint':
+        t_idx = len(times) // 2
+    else:
+        t_idx = -1
+    
+    time_val = times[t_idx]
+    
+    # Get flux values at timepoint
+    flux_at_time = {}
+    for rxn, values in fluxes.items():
+        if len(values) > abs(t_idx):
+            flux_at_time[rxn] = abs(values[t_idx])
+    
+    # Sort by magnitude
+    sorted_fluxes = sorted(flux_at_time.items(), key=lambda x: x[1], reverse=True)[:25]
+    
+    rxn_names = [r[0] for r in sorted_fluxes]
+    rxn_values = [r[1] for r in sorted_fluxes]
+    
+    # Color by pathway
+    colors = []
+    for rxn in rxn_names:
+        if rxn.startswith('V') and any(rxn in p for p in PATHWAY_GROUPS.get('Glycolysis', [])):
+            colors.append('#e74c3c')
+        elif rxn.startswith('VE'):
+            colors.append('#3498db')
+        elif rxn in ['VDPGM', 'V23DPGP']:
+            colors.append('#9b59b6')
+        else:
+            colors.append('#2ecc71')
+    
+    fig = go.Figure(data=[
+        go.Bar(
+            y=rxn_names,
+            x=rxn_values,
+            orientation='h',
+            marker=dict(color=colors),
+            text=[f'{v:.3f}' for v in rxn_values],
+            textposition='outside',
+            hovertemplate='<b>%{y}</b><br>Flux: %{x:.4f} mM/day<extra></extra>'
+        )
+    ])
+    
+    fig.update_layout(
+        title=dict(
+            text=f'<b>Experimental-Derived Flux Distribution</b><br><sub>t = {time_val:.1f} days</sub>',
+            x=0.5,
+            xanchor='center'
+        ),
+        xaxis_title='Flux (mM/day)',
+        yaxis_title='Reaction',
+        height=max(500, len(rxn_names) * 25),
+        margin=dict(l=120)
+    )
+    
+    return fig
+
+
+def create_flux_timeseries_plot(flux_data: Dict, selected_reactions: List[str] = None) -> List[go.Figure]:
+    """
+    Create separate time series plots for each selected reaction showing flux dynamics over days.
+    
+    Args:
+        flux_data: Dictionary with 'times' and 'fluxes' keys
+        selected_reactions: List of reaction names to plot (if None, plots top 5 by variance)
+    
+    Returns:
+        List of Plotly figures, one per reaction
+    """
+    times = flux_data.get('times', [])
+    fluxes = flux_data.get('fluxes', {})
+    
+    if not times or not fluxes:
+        fig = go.Figure()
+        fig.add_annotation(text="No flux data available", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        return [fig]
+    
+    # If no reactions selected, pick top 5 by variance
+    if not selected_reactions:
+        variances = {rxn: np.var(values) for rxn, values in fluxes.items() if len(values) > 0}
+        selected_reactions = sorted(variances.keys(), key=lambda x: variances[x], reverse=True)[:5]
+    
+    # Color palette for reactions
+    colors = [
+        '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f39c12',
+        '#1abc9c', '#e91e63', '#00bcd4', '#ff5722', '#795548',
+        '#607d8b', '#8bc34a', '#ffc107', '#673ab7', '#03a9f4'
+    ]
+    
+    figures = []
+    
+    for i, rxn in enumerate(selected_reactions):
+        if rxn in fluxes:
+            color = colors[i % len(colors)]
+            fig = go.Figure()
+            
+            # Get enzyme name and reaction from REACTION_INFO
+            rxn_info = REACTION_INFO.get(rxn, {})
+            enzyme_name = rxn_info.get('name', 'Unknown Enzyme')
+            reaction_eq = rxn_info.get('reaction', '')
+            
+            fig.add_trace(go.Scatter(
+                x=times,
+                y=fluxes[rxn],
+                mode='lines+markers',
+                name=rxn,
+                line=dict(color=color, width=2),
+                marker=dict(size=6, color=color),
+                hovertemplate=f'<b>{rxn}</b> ({enzyme_name})<br>Day: %{{x:.1f}}<br>Flux: %{{y:.4f}} mM/day<extra></extra>'
+            ))
+            
+            # Calculate stats for subtitle
+            flux_values = fluxes[rxn]
+            mean_flux = np.mean(flux_values)
+            min_flux = np.min(flux_values)
+            max_flux = np.max(flux_values)
+            
+            # Build title with enzyme name and reaction
+            title_text = f'<b>{rxn} - {enzyme_name}</b>'
+            if reaction_eq:
+                title_text += f'<br><sub>{reaction_eq}</sub>'
+            title_text += f'<br><sub>Mean: {mean_flux:.3f} | Range: [{min_flux:.3f}, {max_flux:.3f}] mM/day</sub>'
+            
+            fig.update_layout(
+                title=dict(
+                    text=title_text,
+                    x=0.5,
+                    xanchor='center'
+                ),
+                xaxis_title='Time (days)',
+                yaxis_title='Flux (mM/day)',
+                height=400,
+                showlegend=False,
+                hovermode='x unified'
+            )
+            
+            figures.append(fig)
+    
+    return figures

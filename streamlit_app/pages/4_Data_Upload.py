@@ -27,6 +27,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from core.metabolite_mapper import MetaboliteMapper
 from core.data_preprocessor import DataPreprocessor
+from core.flux_estimator import FluxEstimator, compute_flux_from_uploaded_data
 from core.auth import init_session_state, check_page_auth
 from core.styles import apply_global_styles
 
@@ -440,6 +441,54 @@ if uploaded_file is not None:
                 # Show preview of transformed data
                 with st.expander("🔍 Preview Transformed Data"):
                     st.dataframe(transformed_df.head(), width="stretch")
+                
+                # Flux Preview Section
+                with st.expander("🔬 Preview Flux Estimation", expanded=False):
+                    st.markdown("### Estimated Fluxes from Your Data")
+                    st.caption("Preview of metabolic fluxes computed from your metabolite concentrations using Michaelis-Menten kinetics")
+                    
+                    try:
+                        # Compute fluxes from the transformed data
+                        with st.spinner("Computing flux estimates..."):
+                            flux_preview = compute_flux_from_uploaded_data(transformed_df, time_col='Time')
+                        
+                        if flux_preview and len(flux_preview['fluxes']) > 0:
+                            st.success(f"✅ Estimated {len(flux_preview['fluxes'])} reaction fluxes")
+                            
+                            # Store in session state for later use
+                            st.session_state['experimental_flux_data'] = flux_preview
+                            
+                            # Show top fluxes at final timepoint
+                            final_fluxes = {}
+                            for rxn, values in flux_preview['fluxes'].items():
+                                if values:
+                                    final_fluxes[rxn] = abs(values[-1])
+                            
+                            top_fluxes = sorted(final_fluxes.items(), key=lambda x: x[1], reverse=True)[:10]
+                            
+                            # Create preview plot
+                            fig = go.Figure(data=[
+                                go.Bar(
+                                    y=[r[0] for r in top_fluxes],
+                                    x=[r[1] for r in top_fluxes],
+                                    orientation='h',
+                                    marker=dict(color='#3498db')
+                                )
+                            ])
+                            fig.update_layout(
+                                title="Top 10 Estimated Fluxes (Final Timepoint)",
+                                xaxis_title="Flux (mM/day)",
+                                yaxis_title="Reaction",
+                                height=400
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                            st.info("💡 For full flux analysis and comparison with simulations, go to **🔬 Flux Analysis** page.")
+                        else:
+                            st.warning("⚠️ Could not compute fluxes. Make sure your data includes key metabolites like GLC, ATP, LAC, etc.")
+                    
+                    except Exception as e:
+                        st.error(f"Error computing flux preview: {str(e)}")
             else:
                 st.error("❌ Please save column mapping first!")
 

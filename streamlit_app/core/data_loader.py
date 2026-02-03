@@ -18,15 +18,15 @@ if str(src_path) not in sys.path:
 
 def load_experimental_data():
     """
-    Load experimental data from Brodbar et al. OR uploaded custom data.
-    In validation mode, returns Brodbar data (custom data handled separately).
+    Load experimental data from Bordbar et al. OR uploaded custom data.
+    In validation mode, returns Bordbar data (custom data handled separately).
     Returns DataFrame with metabolite time series
     """
     # Check mode
     mode = st.session_state.get('uploaded_data_mode', '')
     uploaded_active = st.session_state.get('uploaded_data_active', False)
     
-    # In "validation only" mode, always return Brodbar data
+    # In "validation only" mode, always return Bordbar data
     # Custom data will be handled separately for comparison
     if uploaded_active and mode == "Use for validation only":
         return _load_experimental_data_cached()
@@ -36,14 +36,14 @@ def load_experimental_data():
         if 'uploaded_data' in st.session_state:
             return st.session_state['uploaded_data'].copy()
     
-    # Default: load Brodbar data
+    # Default: load Bordbar data
     return _load_experimental_data_cached()
 
 @st.cache_data(ttl=3600)
 def _load_experimental_data_cached():
     """Cached version of experimental data loading from file."""
     try:
-        data_path = src_path / "Data_Brodbar_et_al_exp.xlsx"
+        data_path = src_path / "Data_Bordbar_et_al_exp.xlsx"
         df = pd.read_excel(data_path, engine='openpyxl')
         return df
     except Exception as e:
@@ -71,7 +71,7 @@ def load_fitted_parameters():
     Returns DataFrame with coefficients (a, b, c, d, e) for each metabolite
     """
     try:
-        data_path = project_root / "Data_Brodbar_et_al_exp_fitted_params.csv"
+        data_path = project_root / "Data_Bordbar_et_al_exp_fitted_params.csv"
         df = pd.read_csv(data_path)
         return df
     except Exception as e:
@@ -87,7 +87,7 @@ def load_initial_conditions(source="JA Final"):
     -----------
     source : str
         "JA Final" - from Initial_conditions_JA_Final.xls
-        "Brodbar" - from Data_Brodbar_et_al_exp.xlsx first timepoint
+        "Bordbar" - from Data_Bordbar_et_al_exp.xlsx first timepoint
     
     Returns:
     --------
@@ -104,7 +104,7 @@ def load_initial_conditions(source="JA Final"):
                 # Try first two columns
                 return dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
         
-        elif source == "Brodbar":
+        elif source == "Bordbar":
             exp_data = load_experimental_data()
             if exp_data is not None:
                 # Get first timepoint for each metabolite
@@ -166,8 +166,8 @@ def validate_data_files():
     
     # Otherwise check physical files in src directory
     required_files = {
-        'experimental_data': src_path / "Data_Brodbar_et_al_exp.xlsx",
-        'fitted_params': src_path / "Data_Brodbar_et_al_exp_fitted_params.csv",
+        'experimental_data': src_path / "Data_Bordbar_et_al_exp.xlsx",
+        'fitted_params': src_path / "Data_Bordbar_et_al_exp_fitted_params.csv",
         'initial_conditions': src_path / "Initial_conditions_JA_Final.xls"
     }
     

@@ -92,7 +92,7 @@ with st.sidebar:
     st.subheader("🔬 Initial Conditions")
     ic_source = st.selectbox(
         "Data Source",
-        ["JA Final (Recommended)", "Brodbar Experimental", "Custom"],
+        ["JA Final (Recommended)", "Bordbar Experimental", "Custom"],
         help="Source for initial metabolite concentrations"
     )
     
@@ -340,7 +340,7 @@ with tab3:
     
     **Step 3: Select Initial Conditions**
     - "JA Final" recommended (physiological)
-    - "Brodbar" for paper replication
+    - "Bordbar" for paper replication
     
     **Step 4: Run Simulation**
     - Click "Start Simulation"
@@ -465,7 +465,7 @@ if st.session_state.get('simulation_done', False):
         if 'experimental_data' in results and results['experimental_data']['metabolites']:
             exp_metabolites = results['experimental_data']['metabolites']
             with st.expander(f"ℹ️ Experimental Data Available ({len(exp_metabolites)} metabolites)"):
-                st.info("📊 **Experimental data from Brodbar et al.** is displayed for all matching metabolites (case-insensitive name matching).")
+                st.info("📊 **Experimental data from Bordbar et al.** is displayed for all matching metabolites (case-insensitive name matching).")
                 st.caption("Metabolites with experimental data:")
                 # Display in columns for compact view
                 cols = st.columns(4)

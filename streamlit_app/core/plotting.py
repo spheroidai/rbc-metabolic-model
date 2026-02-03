@@ -143,7 +143,7 @@ def plot_single_metabolite_comparison(results, metabolite_name):
                      '<extra></extra>'
     ))
     
-    # Experimental points - Brodbar et al. data
+    # Experimental points - Bordbar et al. data
     # Match by name (case-insensitive) for ALL metabolites
     has_experimental = False
     if 'experimental_data' in results and results['experimental_data']['metabolites']:
@@ -166,19 +166,19 @@ def plot_single_metabolite_comparison(results, metabolite_name):
                     len(exp_data['values'].shape) == 2 and 
                     exp_data['values'].shape[0] > metab_idx):
                     
-                    # Brodbar et al. data - circle marker with dark gray
+                    # Bordbar et al. data - circle marker with dark gray
                     fig.add_trace(go.Scatter(
                         x=exp_data['time'],
                         y=exp_data['values'][metab_idx, :],
                         mode='markers',
-                        name='Brodbar et al.',
+                        name='Bordbar et al.',
                         marker=dict(
                             size=8,
                             color='#262730',  # Dark gray
                             symbol='circle',
                             line=dict(width=1, color='white')
                         ),
-                        hovertemplate='<b>Brodbar et al.</b><br>' +
+                        hovertemplate='<b>Bordbar et al.</b><br>' +
                                      'Time: %{x:.1f} days<br>' +
                                      'Conc: %{y:.4f} mM<br>' +
                                      '<extra></extra>'

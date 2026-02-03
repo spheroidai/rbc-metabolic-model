@@ -10,7 +10,7 @@ from pathlib import Path
 # Get src directory for data file paths
 _THIS_FILE = Path(__file__).resolve()
 _SRC_DIR = _THIS_FILE.parent  # This file is in src/
-_DATA_FILE = _SRC_DIR / "Data_Brodbar_et_al_exp.xlsx"
+_DATA_FILE = _SRC_DIR / "Data_Bordbar_et_al_exp.xlsx"
 
 
 def parse_initial_conditions(model, file_path):
@@ -32,7 +32,7 @@ def parse_initial_conditions(model, file_path):
     x0_name : list
         List of metabolite names corresponding to x0 values
     """
-    print("Using initial conditions from experimental data (Data_Brodbar_et_al_exp.xlsx)")
+    print("Using initial conditions from experimental data (Data_Bordbar_et_al_exp.xlsx)")
     print("Mapping to actual model metabolite order")
     
     # Load experimental data - use first experimental time point as initial conditions

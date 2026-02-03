@@ -13,7 +13,7 @@ from pathlib import Path
 # Get src directory for data file paths
 _THIS_FILE = Path(__file__).resolve()
 _SRC_DIR = _THIS_FILE.parent  # This file is in src/
-_DATA_FILE = _SRC_DIR / "Data_Brodbar_et_al_exp.xlsx"
+_DATA_FILE = _SRC_DIR / "Data_Bordbar_et_al_exp.xlsx"
 _IC_FILE = _SRC_DIR / "Initial_conditions_JA_Final.xls"
 
 # Global flux tracking
@@ -1191,7 +1191,7 @@ def equadiff_brodbar(t: float,
             from curve_fitting_data import get_curve_fit_correction, CURVE_FIT_PARAMS, compute_target_concentration
             
             # Apply corrections for ALL metabolites with experimental data (55 total)
-            # Generated automatically from Data_Brodbar_et_al_exp.xlsx
+            # Generated automatically from Data_Bordbar_et_al_exp.xlsx
             metabolite_corrections = {
                 # Nucleotides and purines (intracellular)
                 'ADE': 25,    # Adenine

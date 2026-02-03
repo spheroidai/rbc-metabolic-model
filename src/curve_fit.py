@@ -590,7 +590,7 @@ def export_to_pdf(save_path="html", output_filename="Results_Curvefit_Bardyn.pdf
         return None
 
 
-def compare_datasets(data_bardyn="Data_Bardyn_et_al_ctrl", data_brodbar="Data_Brodbar_et_al_exp", 
+def compare_datasets(data_bardyn="Data_Bardyn_et_al_ctrl", data_brodbar="Data_Bordbar_et_al_exp", 
                   selected_metabolites=None, max_metabolites=None, generate_plots=True, verbose=False):
     """
     Process both Bardyn and Brodbar datasets and compare the results.

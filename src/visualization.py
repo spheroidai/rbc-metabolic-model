@@ -13,7 +13,7 @@ def plot_metabolite_results(t, x, model, meta_names1=None, meta_names2=None,
                            save_path="html"):
     """
     Plot the results of the metabolic simulation and compare with experimental data.
-    Only plots experimental data for metabolites present in Data_Brodbar_et_al_exp.xlsx
+    Only plots experimental data for metabolites present in Data_Bordbar_et_al_exp.xlsx
     
     Parameters:
     -----------
@@ -38,15 +38,15 @@ def plot_metabolite_results(t, x, model, meta_names1=None, meta_names2=None,
     if metabolites2 is not None:
         print(f"Experimental data 2 shape: {metabolites2.shape}")
     
-    # Load available experimental metabolites from Data_Brodbar_et_al_exp.xlsx
+    # Load available experimental metabolites from Data_Bordbar_et_al_exp.xlsx
     available_exp_metabolites = set()
     try:
         import pandas as pd
-        df = pd.read_excel('Data_Brodbar_et_al_exp.xlsx')
+        df = pd.read_excel('Data_Bordbar_et_al_exp.xlsx')
         available_exp_metabolites = set(df['Conc / mM'].astype(str).str.strip().str.upper().tolist())
-        print(f"Found {len(available_exp_metabolites)} metabolites in Data_Brodbar_et_al_exp.xlsx")
+        print(f"Found {len(available_exp_metabolites)} metabolites in Data_Bordbar_et_al_exp.xlsx")
     except Exception as e:
-        print(f"Warning: Could not load Data_Brodbar_et_al_exp.xlsx: {e}")
+        print(f"Warning: Could not load Data_Bordbar_et_al_exp.xlsx: {e}")
         available_exp_metabolites = set()
     
     # Create save directory if it doesn't exist

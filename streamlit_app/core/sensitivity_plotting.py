@@ -193,11 +193,11 @@ def plot_side_by_side_comparison(analyzer, metabolite_name: str) -> go.Figure:
     # Create figure with two subplots
     fig = make_subplots(
         rows=1, cols=2,
-        subplot_titles=('Brodbar et al. Data', 'Custom Data'),
+        subplot_titles=('Bordbar et al. Data', 'Custom Data'),
         horizontal_spacing=0.1
     )
     
-    # Left: Brodbar experimental data
+    # Left: Bordbar experimental data
     if exp_b and metabolite_name in exp_b.get('metabolites', []):
         idx = exp_b['metabolites'].index(metabolite_name)
         fig.add_trace(
@@ -205,14 +205,14 @@ def plot_side_by_side_comparison(analyzer, metabolite_name: str) -> go.Figure:
                 x=exp_b['time'],
                 y=exp_b['values'][idx, :],
                 mode='markers',
-                name='Brodbar Exp',
+                name='Bordbar Exp',
                 marker=dict(size=8, color='#262730', symbol='circle'),
                 hovertemplate='Time: %{x:.1f} days<br>Conc: %{y:.4f} mM<extra></extra>'
             ),
             row=1, col=1
         )
     
-    # Add simulation line to Brodbar plot
+    # Add simulation line to Bordbar plot
     fig.add_trace(
         go.Scatter(
             x=time_sim,
