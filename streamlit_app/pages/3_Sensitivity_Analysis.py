@@ -5,12 +5,11 @@ import streamlit as st
 import sys
 from pathlib import Path
 
-# Add core to path
-core_path = Path(__file__).parent.parent / "core"
-sys.path.insert(0, str(core_path))
+# Add streamlit_app to path for core.* imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sensitivity_engine import SensitivityAnalyzer, run_comparative_simulation
-from sensitivity_plotting import (
+from core.sensitivity_engine import SensitivityAnalyzer, run_comparative_simulation
+from core.sensitivity_plotting import (
     plot_flux_difference_heatmap,
     plot_metabolite_comparison_tornado,
     plot_pathway_impact_summary,
@@ -18,8 +17,8 @@ from sensitivity_plotting import (
     plot_validation_metrics,
     create_comparison_summary_cards
 )
-from auth import init_session_state, check_page_auth
-from styles import apply_global_styles
+from core.auth import init_session_state, check_page_auth
+from core.styles import apply_global_styles
 
 st.set_page_config(
     page_title="Sensitivity Analysis - RBC Model",

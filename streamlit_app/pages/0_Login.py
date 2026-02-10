@@ -147,9 +147,7 @@ with tab1:
                         st.success("✅ Login successful!")
                         st.balloons()
                         
-                        # Redirect after a short delay
-                        import time
-                        time.sleep(1)
+                        # Redirect to home page
                         st.switch_page("app.py")
                     else:
                         st.error(f"❌ {result.get('error', 'Login failed')}")

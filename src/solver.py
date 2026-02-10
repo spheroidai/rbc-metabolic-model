@@ -1,6 +1,9 @@
 """
 Python equivalent of the solver.m MATLAB function.
 This module handles numerical integration of the system of ODEs.
+
+DEPRECATED: This module is not used by the Streamlit app (which uses SimulationEngine).
+It is kept for CLI/legacy reference. The ODE function is now in equadiff_brodbar.py.
 """
 import numpy as np
 from scipy.integrate import solve_ivp

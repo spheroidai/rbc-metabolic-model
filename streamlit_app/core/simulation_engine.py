@@ -37,9 +37,6 @@ class SimpleFluxTracker:
 # Import existing modules
 try:
     from equadiff_brodbar import equadiff_brodbar, BRODBAR_METABOLITE_MAP
-    from equadiff_brodbar import enable_pH_modulation, disable_pH_modulation
-    from equadiff_brodbar import enable_bohr_tracking, disable_bohr_tracking
-    from equadiff_brodbar import enable_flux_tracking, disable_flux_tracking
     from curve_fit import curve_fit_ja
     from parse_initial_conditions import parse_initial_conditions
     from ph_perturbation import (PhPerturbation, create_step_perturbation,
@@ -91,7 +88,8 @@ class SimulationEngine:
                       ph_severity="Moderate",
                       ph_target=7.0,
                       ph_duration=6,
-                      progress_callback=None):
+                      progress_callback=None,
+                      custom_params=None):
         """
         Run RBC metabolic simulation
         
@@ -109,6 +107,10 @@ class SimulationEngine:
             Relative and absolute tolerances
         progress_callback : callable
             Function(progress, message) for progress updates
+        custom_params : dict, optional
+            Dictionary of custom parameter values for optimization.
+            Format: {'vmax_VELAC': 0.65, 'km_LAC': 0.8, ...}
+            If None, uses default model parameters.
         
         Returns:
         --------
@@ -225,10 +227,8 @@ class SimulationEngine:
                             progress_callback(0.28, f"pH: Ramp to {ph_target} over {ph_duration}h")
                     
                     if ph_perturbation:
-                        # Enable pH modulation in equadiff_brodbar
-                        enable_pH_modulation(ph_perturbation)
                         if progress_callback:
-                            progress_callback(0.3, "pH modulation enabled")
+                            progress_callback(0.3, "pH perturbation configured")
                 except Exception as e:
                     if progress_callback:
                         progress_callback(0.3, f"Warning: pH setup failed - {str(e)}")
@@ -244,27 +244,32 @@ class SimulationEngine:
                 if progress_callback:
                     progress_callback(0.3, f"Added pHe to initial conditions (108 metabolites)")
             
-            # Enable Bohr effect tracking if pH perturbation is active
+            # Setup Bohr effect tracking if pH perturbation is active (thread-safe, no globals)
             bohr_data = None
+            bohr_effect_obj = None
             if ph_perturbation and PH_MODULES_AVAILABLE:
                 try:
-                    bohr_data = {}  # Will store Bohr metrics
-                    if enable_bohr_tracking(bohr_data):
-                        if progress_callback:
-                            progress_callback(0.32, "✓ Bohr effect tracking enabled")
+                    from bohr_effect import BohrEffect
+                    bohr_effect_obj = BohrEffect()
+                    bohr_data = {key: [] for key in [
+                        'time', 'pHi', 'pHe', 'BPG_mM', 'P50_mmHg',
+                        'sat_arterial', 'sat_venous', 'O2_extracted_fraction',
+                        'O2_arterial_mL_per_dL', 'O2_venous_mL_per_dL'
+                    ]}
+                    if progress_callback:
+                        progress_callback(0.32, "✓ Bohr effect tracking enabled")
                 except Exception as e:
                     if progress_callback:
                         progress_callback(0.32, f"⚠️ Bohr tracking unavailable: {e}")
                     bohr_data = None
+                    bohr_effect_obj = None
             
-            # Enable flux tracking for all simulations
+            # Setup flux tracking for all simulations (thread-safe, no globals)
             flux_tracker = None
             try:
-                # Initialize flux tracker
                 flux_tracker = SimpleFluxTracker()
-                if enable_flux_tracking(flux_tracker):
-                    if progress_callback:
-                        progress_callback(0.33, "✓ Flux tracking enabled")
+                if progress_callback:
+                    progress_callback(0.33, "✓ Flux tracking enabled")
             except Exception as e:
                 if progress_callback:
                     progress_callback(0.33, f"⚠️ Flux tracking unavailable: {e}")
@@ -290,8 +295,12 @@ class SimulationEngine:
             
             def ode_func(t, x):
                 return equadiff_brodbar(t, x, thermo_constraints=None, 
-                                       custom_params=None,
-                                       curve_fit_strength=curve_fit_strength)
+                                       custom_params=custom_params,
+                                       curve_fit_strength=curve_fit_strength,
+                                       flux_tracker=flux_tracker,
+                                       ph_perturbation=ph_perturbation,
+                                       bohr_effect=bohr_effect_obj,
+                                       bohr_tracker=bohr_data)
             
             if progress_callback:
                 progress_callback(0.4, f"Integrating with {solver_method} solver...")
@@ -329,19 +338,7 @@ class SimulationEngine:
             # Calculate duration
             duration = time.time() - start_time
             
-            # Clean up pH modulation, Bohr tracking, and flux tracking after integration
-            if ph_perturbation and PH_MODULES_AVAILABLE:
-                try:
-                    disable_pH_modulation()
-                    disable_bohr_tracking()
-                except:
-                    pass
-            
-            # Disable flux tracking
-            try:
-                disable_flux_tracking()
-            except:
-                pass
+            # No global cleanup needed - all tracking objects are local to this call
             
             if progress_callback:
                 progress_callback(1.0, "Simulation completed!")

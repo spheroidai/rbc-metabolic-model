@@ -12,18 +12,17 @@ import numpy as np
 import sys
 from pathlib import Path
 
-# Add core to path
-core_path = Path(__file__).parent.parent / "core"
-sys.path.insert(0, str(core_path))
+# Add streamlit_app to path for core.* imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from auth import require_auth
-from simulation_engine import SimulationEngine
-from pathway_visualization import (
+from core.auth import init_session_state, check_page_auth
+from core.simulation_engine import SimulationEngine
+from core.pathway_visualization import (
     MetabolicNetworkVisualizer,
     create_3d_metabolite_heatmap,
     create_hierarchical_clustering
 )
-from styles import apply_global_styles
+from core.styles import apply_global_styles
 
 # Page config
 st.set_page_config(
@@ -35,8 +34,10 @@ st.set_page_config(
 # Apply global styles
 apply_global_styles()
 
-# Authentication
-user = require_auth()
+# Initialize and check authentication
+init_session_state()
+if not check_page_auth():
+    st.stop()
 
 # Title
 st.title("🗺️ Advanced Pathway Visualization")

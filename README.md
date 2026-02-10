@@ -3,188 +3,156 @@
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://rbc-metabolic-model.streamlit.app)
 [![GitHub](https://img.shields.io/badge/GitHub-spheroidai%2Frbc--metabolic--model-blue?logo=github)](https://github.com/spheroidai/rbc-metabolic-model)
 
-Interactive Red Blood Cell metabolic simulation platform with comprehensive pH perturbation analysis and real-time visualization.
+Interactive Red Blood Cell metabolic simulation platform based on **Bordbar et al. (2015)**.
+108 metabolites, ~200 reactions, 8 metabolic pathways, with comprehensive pH perturbation analysis and real-time visualization.
 
 ## 🚀 Quick Start
 
 ### Web Application (Streamlit)
 
-**Try it online:** [Live Demo](https://your-app-name.streamlit.app)
-
-Or run locally:
-
 ```bash
+pip install -r requirements.txt
 streamlit run streamlit_app/app.py
 ```
 
 The Streamlit app provides:
 
-- 🏠 **Interactive Dashboard** - User-friendly interface with navigation
-- 🚀 **Simulation Engine** - Configure and run metabolic simulations
-- 🧪 **pH Perturbation** - Acidosis, alkalosis, step, and ramp scenarios
-- 🔬 **Flux Analysis** - Interactive metabolic flux visualization and heatmaps
-- 📊 **Sensitivity Analysis** - Compare custom experimental data vs Brodbar dataset
-- 📤 **Data Upload** - Import custom experimental data with intelligent metabolite mapping
-- 📈 **Real-time Visualization** - Interactive Plotly charts
-- 💾 **Data Export** - CSV formats for results and flux data
+- 🏠 **Dashboard** — Home page with authentication and navigation
+- 🧪 **Simulation** — Configure and run ODE-based metabolic simulations
+- 🔬 **Flux Analysis** — Interactive metabolic flux heatmaps and time-series
+- 📊 **Sensitivity Analysis** — Compare custom experimental data vs Bordbar dataset
+- 📤 **Data Upload** — Import custom experimental data with intelligent metabolite mapping
+- 🎯 **Parameter Calibration** — Optimize Vmax/Km parameters against experimental data
+- 🗺️ **Pathway Visualization** — KEGG-style network graphs, 3D heatmaps, clustering
+- ⚙️ **Admin Dashboard** — User management and simulation analytics
+- 📈 **Interactive Plots** — Plotly charts with export to CSV
 
 ### Command Line Interface
 
 For batch processing and advanced users:
 
 ```bash
-python src/main.py --curve-fit 1.0 --ph-perturbation acidosis
+python src/main.py --curve-fit 1.0 --ph-perturbation acidosis --ph-severity severe
+```
+
+## 📁 Project Structure
+
+```
+Mario_RBC_up/
+├── streamlit_app/                     # Web Application
+│   ├── app.py                         # Main Streamlit entry point
+│   ├── .streamlit/config.toml         # Theme & server config
+│   ├── core/                          # Backend modules
+│   │   ├── simulation_engine.py       # ODE simulation orchestration
+│   │   ├── auth.py                    # Supabase authentication
+│   │   ├── plotting.py                # Interactive Plotly visualizations
+│   │   ├── data_loader.py             # Data validation and loading
+│   │   ├── parameter_calibration.py   # Parameter optimization (DE, L-BFGS-B, LS)
+│   │   ├── flux_plotting.py           # Flux heatmaps and distributions
+│   │   ├── flux_estimator.py          # Experimental flux estimation
+│   │   ├── bohr_plotting.py           # Bohr effect visualizations
+│   │   ├── sensitivity_engine.py      # Dataset comparison engine
+│   │   ├── sensitivity_plotting.py    # Sensitivity result plots
+│   │   ├── pathway_visualization.py   # Network graphs and clustering
+│   │   ├── metabolite_mapper.py       # Column name → model metabolite mapping
+│   │   ├── data_preprocessor.py       # Uploaded data preprocessing
+│   │   ├── reaction_info_complete.py  # Reaction metadata for all ~200 reactions
+│   │   └── styles.py                  # UI theme and CSS
+│   ├── data/
+│   │   └── metabolite_synonyms.json   # Name synonym database
+│   └── pages/                         # Streamlit pages (0–7)
+│       ├── 0_Login.py                 # Authentication
+│       ├── 1_Simulation.py            # Run simulations
+│       ├── 2_Flux_Analysis.py         # Flux heatmaps and comparison
+│       ├── 3_Sensitivity_Analysis.py  # Dataset comparison
+│       ├── 4_Data_Upload.py           # Custom data import
+│       ├── 5_Parameter_Calibration.py # Model calibration
+│       ├── 6_Admin.py                 # User management
+│       └── 7_Pathway_Visualization.py # Network visualization
+├── src/                               # Core Backend & CLI
+│   ├── main.py                        # CLI entry point (argparse)
+│   ├── equadiff_brodbar.py            # ODE system — 108 metabolites, 100+ injectable params
+│   ├── curve_fit.py                   # Experimental data curve fitting
+│   ├── curve_fitting_data.py          # Polynomial fit coefficients (55 metabolites)
+│   ├── parse_initial_conditions.py    # Load initial concentrations from Excel
+│   ├── ph_perturbation.py             # PhPerturbation class (step/ramp/pulse/sinusoidal)
+│   ├── ph_sensitivity_params.py       # pH-dependent enzyme modulation (26 enzymes)
+│   ├── bohr_effect.py                 # O₂ affinity, P50, Hill equation
+│   ├── model.py                       # Reaction network loader (CLI)
+│   ├── parse.py                       # Rxn_RBC.txt parser (CLI)
+│   ├── solver.py                      # ODE solver wrapper (CLI, deprecated)
+│   ├── visualization.py               # Matplotlib plots (CLI)
+│   ├── flux_visualization.py          # FluxTracker + CLI flux plots
+│   ├── Data_Bordbar_et_al_exp.xlsx    # Experimental time-series (14 timepoints)
+│   └── Initial_conditions_JA_Final.xls# Initial metabolite concentrations
+├── tests/                             # Test data and scripts
+├── RBC/Rxn_RBC.txt                    # Reaction network definition (~200 reactions)
+├── Simulations/                       # Output directory (auto-created)
+├── ARCHITECTURE.md                    # Technical architecture guide
+├── SUPABASE_SETUP.sql                 # Database schema for authentication
+└── requirements.txt                   # Python dependencies
 ```
 
 ## 📖 About
 
-This project is a Python conversion of the MATLAB-based RBC (Red Blood Cell) metabolic model simulation, based on **Bordbar et al. (2015)**. The model simulates the metabolic behavior of red blood cells using differential equations and experimental curve-fitting.
+Python conversion of the MATLAB-based RBC metabolic model from **Bordbar et al. (2015)** *"Personalized Whole-Cell Kinetic Models of Metabolism"*, Cell Systems 1(4), 283–292.
 
-## Project Structure
+The model simulates red blood cell metabolism over up to 42 days of storage, including glycolysis, pentose phosphate pathway, nucleotide metabolism, glutathione redox, amino acid pools, and pH/Bohr effect dynamics.
 
-- **`streamlit_app/`** - Web application
-  - `app.py` - Streamlit home page
-  - `pages/1_Simulation.py` - Interactive simulation interface
-  - `core/` - Backend modules
-    - `simulation_engine.py` - Simulation orchestration
-    - `plotting.py` - Interactive Plotly visualizations
-    - `data_loader.py` - Data validation and loading
-  - `.streamlit/config.toml` - Streamlit configuration
-
-- **`src/`** - Python CLI source code
-  - `main.py` - Main simulation script with CLI arguments
-  - `equadiff_brodbar.py` - Bordbar 2015 model with 108 metabolites
-  - `curve_fit.py` - Experimental data curve fitting
-  - `ph_perturbation.py` - Dynamic pH perturbation system
-  - `ph_sensitivity_params.py` - pH-dependent enzyme modulation
-  - `bohr_effect.py` - Bohr effect and O2 transport
-  - `flux_visualization.py` - Metabolic flux analysis
-
-- **`Documentation/`** - Complete project documentation
-  - `pH_PROJECT_FINAL_COMPLETE.md` - Main project documentation
-  - `BOHR_INTEGRATION_COMPLETE.md` - Bohr effect integration
-
-- **Data files**
-  - `Data_Brodbar_et_al_exp.xlsx` - Experimental time-series data
-  - `Initial_conditions_JA_Final.xls` - Initial metabolite concentrations
-  - `requirements.txt` - Python dependencies
-
-## Dependencies
-
-The required Python packages are listed in `requirements.txt`. Install them with:
+## ⚙️ Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Usage
+Key packages: `numpy`, `scipy`, `pandas`, `streamlit`, `plotly`, `matplotlib`, `openpyxl`, `supabase` (optional, for authentication).
 
-### Quick Start
+## 🧪 CLI Usage
 
-Activate the virtual environment (recommended):
-
-```powershell
-.\activate_venv.ps1
-```
-
-Run a basic simulation:
+### Basic Simulation
 
 ```bash
 python src/main.py --curve-fit 1.0
 ```
 
-### pH Perturbation Simulations
+### pH Perturbation Scenarios
 
-**Acidosis (severe):**
 ```bash
+# Acidosis (severe)
 python src/main.py --curve-fit 1.0 --ph-perturbation acidosis --ph-severity severe
-```
 
-**Alkalosis (moderate):**
-```bash
+# Alkalosis (moderate)
 python src/main.py --curve-fit 1.0 --ph-perturbation alkalosis --ph-severity moderate
-```
 
-**Custom pH ramp:**
-```bash
+# Custom pH ramp
 python src/main.py --curve-fit 1.0 --ph-perturbation ramp --ph-target 6.9 --ph-duration 8
 ```
 
 ### Simulation Output
 
-The simulation will:
-1. Load experimental data (Brodbar et al. 2015)
-2. Setup initial conditions (108 metabolites)
-3. Solve ODEs with pH perturbations
-4. Track metabolic fluxes (89 reactions)
-5. Calculate Bohr effect (P50, O2 saturation)
-6. Generate plots and PDFs in `Simulations/brodbar/`
+Results are written to `Simulations/brodbar/`:
 
-### Individual Module Usage
-
-Each module can also be used independently:
-
-```python
-# Process experimental data with curve fitting
-from curve_fit import curve_fit_ja
-meta_names, metabolites, params, times = curve_fit_ja("Data_Bardyn_et_al_ctrl")
-
-# Parse a reaction network file
-from parse import parse
-model = parse("RBC/Rxn_RBC.txt")
-
-# Load initial conditions
-from parse_initial_conditions import parse_initial_conditions
-x0, x0_names = parse_initial_conditions(model, "Initial_conditions_JA_Final.xls")
-
-# Solve the system of differential equations
-from solver import solver
-t, x = solver(x0, [0, 42], model)
-
-# Visualize results
-from visualization import plot_metabolite_results
-plot_metabolite_results(t, x, model)
+```
+Simulations/brodbar/
+├── metabolites/     # Concentration plots & PDFs
+├── fluxes/          # Flux heatmaps, pathway plots
+├── ph_analysis/     # pH dynamics plots
+└── bohr_effect/     # P50, O₂ saturation metrics
 ```
 
-## Original MATLAB Project
+## 🔬 Model Highlights
 
-The original MATLAB project consisted of several key files:
+- **108 metabolites** (106 base + pHi + pHe)
+- **~200 reactions** across 8 pathways
+- **100+ injectable Vmax/Km parameters** via `custom_params` dict
+- **Curve fitting**: blend Michaelis-Menten kinetics with experimental trajectories (0–100%)
+- **pH dynamics**: 26 pH-sensitive enzymes, proton transport (NHE, AE1, diffusion)
+- **Bohr effect**: P50, O₂ saturation, 2,3-BPG coupling
 
-- `protocole_RBC_JA2020.m` - Main script for simulation execution and visualization
-- `CurvefitJA.m` - Processes data with curve fitting
-- `parse.m` - Generates the model from reaction descriptions
-- `parse_initcond_ja.m` - Provides initial condition vectors
-- `solver.m` - Performs numerical integration using ODE solvers
-- `equadiff.m` - Contains the differential equations
+## 📚 References
 
-## Data Files
+1. **Bordbar, A., et al. (2015)** — *Personalized Whole-Cell Kinetic Models of Metabolism* — Cell Systems, 1(4), 283–292 — [DOI](https://www.cell.com/cell-systems/fulltext/S2405-4712(15)00149-0)
 
-The Excel files containing initial conditions and metabolite data remain in their original format and location:
+## 📝 License
 
-- `Initial_conditions_JA_Final.xls` - Contains the final initial conditions
-- `Data_Bardyn_et_al_ctrl.xlsx` and `Data_Brodbar_et_al_exp.xlsx` - Experimental data
-
-## Implementation Notes
-
-### Model Implementation
-
-The Python implementation uses modern scientific computing libraries:
-
-- NumPy for numerical operations
-- pandas for data handling
-- SciPy for numerical integration
-- Matplotlib for visualization
-
-### Differences from MATLAB Version
-
-1. **Object-Oriented Approach**: The Python version uses a more modular structure.
-2. **Numerical Integration**: Uses SciPy's `solve_ivp` instead of MATLAB's `ode15s`.
-3. **Plotting**: Matplotlib-based plotting functions provide similar visualizations to the MATLAB figures.
-4. **Error Handling**: More robust error handling throughout the code.
-
-### Future Improvements
-
-1. Further optimization of the differential equations implementation
-2. Addition of parameter estimation capabilities
-3. Interactive visualization using modern Python libraries like Plotly
-4. Parallel computation for more efficient simulation of large models
+MIT License — See LICENSE file

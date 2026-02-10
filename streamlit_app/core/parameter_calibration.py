@@ -257,7 +257,7 @@ class ParameterCalibrator:
                 sim_values = self._extract_simulation_values(sim_results)
                 residuals = (sim_values - self.experimental_values).flatten()
                 return residuals
-            except:
+            except Exception:
                 return np.ones(len(self.target_metabolites) * len(self.time_points)) * 1e5
         
         # Separate lower and upper bounds

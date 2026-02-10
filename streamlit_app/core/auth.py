@@ -87,7 +87,7 @@ class AuthManager:
                         # Note: Supabase doesn't allow deleting auth users via client
                         # Admin will need to manually clean up if needed
                         pass
-                    except:
+                    except Exception:
                         pass
                     raise Exception(f"Profile creation failed: {str(profile_error)}")
                 
@@ -132,7 +132,7 @@ class AuthManager:
                         .update({"last_login": datetime.utcnow().isoformat()})\
                         .eq("id", response.user.id)\
                         .execute()
-                except:
+                except Exception:
                     pass  # Non-critical if update fails
                 
                 return {
@@ -162,7 +162,7 @@ class AuthManager:
         try:
             self.supabase.auth.sign_out()
             return True
-        except:
+        except Exception:
             return False
     
     def get_user_profile(self, user_id: str) -> Optional[Dict]:
@@ -186,7 +186,7 @@ class AuthManager:
                 .execute()
             
             return response.data if response.data else None
-        except:
+        except Exception:
             return None
     
     def is_admin(self, user_id: str) -> bool:
@@ -206,7 +206,7 @@ class AuthManager:
             # Use RPC function to check admin status
             response = self.supabase.rpc("is_admin", {"check_user_id": user_id}).execute()
             return response.data if response.data else False
-        except:
+        except Exception:
             # Fallback to profile check
             profile = self.get_user_profile(user_id)
             return profile and profile.get("role") == "admin"
@@ -233,7 +233,7 @@ class AuthManager:
                     .order("created_at", desc=True)\
                     .execute()
                 return response.data if response.data else []
-            except:
+            except Exception:
                 return []
     
     def update_user_role(self, user_id: str, new_role: str) -> bool:
@@ -260,7 +260,7 @@ class AuthManager:
                 "new_role": new_role
             }).execute()
             return True
-        except:
+        except Exception:
             return False
     
     def deactivate_user(self, user_id: str) -> bool:
@@ -282,7 +282,7 @@ class AuthManager:
                 "target_user_id": user_id
             }).execute()
             return True
-        except:
+        except Exception:
             return False
     
     def log_simulation(self, user_id: str, sim_type: str, 
@@ -350,7 +350,7 @@ class AuthManager:
                 .execute()
             
             return response.data if response.data else []
-        except:
+        except Exception:
             return []
 
 

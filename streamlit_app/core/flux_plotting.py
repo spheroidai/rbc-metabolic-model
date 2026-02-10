@@ -20,7 +20,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
 from typing import Dict, List, Tuple
-from reaction_info_complete import REACTION_INFO_COMPLETE
+from core.reaction_info_complete import REACTION_INFO_COMPLETE
 import streamlit as st
 
 

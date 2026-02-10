@@ -10,10 +10,10 @@ import streamlit as st
 from pathlib import Path
 import sys
 
-# Add core to path
-sys.path.insert(0, str(Path(__file__).parent / "core"))
-from auth import init_session_state, get_user_name, get_user_email, AuthManager
-from styles import apply_global_styles, render_gradient_divider, render_metric_card, render_feature_card, render_info_box, render_footer
+# Add streamlit_app to path for core.* imports
+sys.path.insert(0, str(Path(__file__).parent))
+from core.auth import init_session_state, get_user_name, get_user_email, AuthManager
+from core.styles import apply_global_styles, render_gradient_divider, render_metric_card, render_feature_card, render_info_box, render_footer
 
 # Page configuration
 st.set_page_config(

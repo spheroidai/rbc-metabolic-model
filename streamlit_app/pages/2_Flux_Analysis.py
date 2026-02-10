@@ -19,11 +19,10 @@ import sys
 import numpy as np
 from pathlib import Path
 
-# Add core modules to path
-core_path = Path(__file__).parent.parent / "core"
-sys.path.insert(0, str(core_path))
+# Add streamlit_app to path for core.* imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from flux_plotting import (
+from core.flux_plotting import (
     create_flux_heatmap,
     create_flux_distribution_combined,
     create_flux_detail_view,
@@ -33,9 +32,9 @@ from flux_plotting import (
     create_experimental_flux_summary,
     create_flux_timeseries_plot
 )
-from flux_estimator import FluxEstimator, compute_flux_from_uploaded_data
-from auth import init_session_state, check_page_auth
-from styles import apply_global_styles
+from core.flux_estimator import FluxEstimator, compute_flux_from_uploaded_data
+from core.auth import init_session_state, check_page_auth
+from core.styles import apply_global_styles
 
 # Page configuration
 st.set_page_config(

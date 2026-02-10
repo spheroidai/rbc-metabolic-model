@@ -4,19 +4,21 @@ Plotting Module - Interactive Plotly visualizations for Streamlit
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+import streamlit as st
 import sys
 from pathlib import Path
 
 # Add src to path for pH perturbation
 project_root = Path(__file__).parent.parent.parent
-sys.path.append(str(project_root / "src"))
+src_path = str(project_root / "src")
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
 
 try:
     from ph_perturbation import PhPerturbation
     PH_AVAILABLE = True
 except ImportError:
     PH_AVAILABLE = False
-import streamlit as st
 
 
 def plot_metabolites_interactive(results, selected_metabolites, show_experimental=True):
@@ -66,7 +68,7 @@ def plot_metabolites_interactive(results, selected_metabolites, show_experimenta
                     metab_idx = exp_data['metabolites'].index(metab)
                     fig.add_trace(go.Scatter(
                         x=exp_data['time'],
-                        y=exp_data['values'][:, metab_idx],
+                        y=exp_data['values'][metab_idx, :],
                         mode='markers',
                         name=f'{metab} (exp)',
                         marker=dict(size=8, symbol='circle-open'),

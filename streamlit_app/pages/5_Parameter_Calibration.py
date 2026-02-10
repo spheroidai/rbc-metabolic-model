@@ -14,13 +14,13 @@ from plotly.subplots import make_subplots
 import sys
 from pathlib import Path
 
-# Add core to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "core"))
+# Add streamlit_app to path for core.* imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from parameter_calibration import ParameterCalibrator, CalibrationResult
-from simulation_engine import SimulationEngine
-from auth import init_session_state, check_page_auth
-from styles import apply_global_styles
+from core.parameter_calibration import ParameterCalibrator, CalibrationResult
+from core.simulation_engine import SimulationEngine
+from core.auth import init_session_state, check_page_auth
+from core.styles import apply_global_styles
 
 st.set_page_config(
     page_title="Parameter Calibration - RBC Model",
@@ -64,7 +64,8 @@ with tab1:
             # Load default data
             try:
                 # Load and transpose Bordbar data
-                df_raw = pd.read_excel("Data_Bordbar_et_al_exp.xlsx")
+                _src = Path(__file__).resolve().parent.parent.parent / "src"
+                df_raw = pd.read_excel(_src / "Data_Bordbar_et_al_exp.xlsx")
                 
                 # First column contains metabolite names, rest are time points
                 metabolite_names = df_raw['Conc / mM'].values
@@ -120,20 +121,24 @@ with tab1:
         st.markdown("Select enzyme parameters to calibrate:")
         
         # Common enzyme parameters with reasonable bounds
+        # Names must match equadiff_brodbar.py _get_param keys exactly
+        # Values: (default, lower_bound, upper_bound) from equadiff_brodbar.py
         parameter_presets = {
             "Glycolysis": {
-                "vmax_HK": (1.0, 0.1, 10.0),
-                "vmax_PGI": (1.0, 0.1, 10.0),
-                "vmax_PFK": (1.0, 0.1, 10.0),
-                "vmax_PK": (1.0, 0.1, 10.0)
+                "vmax_VHK": (0.267472, 0.027, 2.675),
+                "vmax_VPGI": (0.204493, 0.020, 2.045),
+                "vmax_VPFK": (0.391893, 0.039, 3.919),
+                "vmax_VPK": (0.936322, 0.094, 9.363),
+                "vmax_VLDH": (0.284952, 0.028, 2.850)
             },
             "Pentose Phosphate": {
-                "vmax_G6PDH": (1.0, 0.1, 10.0),
-                "vmax_6PGL": (1.0, 0.1, 10.0)
+                "vmax_VG6PDH": (0.408870, 0.041, 4.089),
+                "vmax_VPGLS": (4.111138, 0.411, 41.111),
+                "vmax_V6PGD": (10.0, 1.0, 100.0)
             },
             "Rapoport-Luebering": {
-                "vmax_BPGM": (1.0, 0.1, 10.0),
-                "vmax_BPGP": (1.0, 0.1, 10.0)
+                "vmax_VDPGM": (10.0, 1.0, 100.0),
+                "vmax_V23DPGP": (12.0, 1.2, 120.0)
             }
         }
         
@@ -240,17 +245,23 @@ with tab1:
                 engine = SimulationEngine()
                 
                 def simulation_function(params):
-                    """Wrapper for simulation with custom parameters"""
+                    """Wrapper for simulation with custom parameters.
+                    
+                    Args:
+                        params: Dict of parameter overrides, e.g. {'vmax_VHK': 0.3, ...}
+                               Keys must match equadiff_brodbar _get_param names.
+                    """
                     try:
                         # Calculate simulation time in days (SimulationEngine uses days)
                         max_time_hours = max(time_points_hours)
                         t_max_days = max_time_hours / 24.0
                         
-                        # Run simulation (params not integrated yet - uses defaults)
+                        # Run simulation with custom parameters injected into ODE
                         result_dict = engine.run_simulation(
                             t_max=t_max_days,
-                            ic_source="Bordbar",  # Use Bordbar initial conditions
-                            solver_method="RK45"
+                            ic_source="Bordbar",
+                            solver_method="RK45",
+                            custom_params=params
                         )
                         
                         # Check for errors
@@ -269,9 +280,6 @@ with tab1:
                             data[metab_name] = result_dict['x'][:, i]
                         
                         result_df = pd.DataFrame(data)
-                        
-                        # Note: Custom parameters integration pending
-                        # Currently uses default model parameters
                         
                         return result_df
                         
@@ -292,14 +300,8 @@ with tab1:
                     time_points=time_points_hours
                 )
                 
-                # Base parameters (empty for now)
+                # Base parameters: start with empty dict (defaults are in equadiff_brodbar)
                 base_params = {}
-                
-                # Warning about limitations
-                st.warning("""
-                ⚠️ **Note**: Cette première version utilise les paramètres par défaut du modèle.
-                L'intégration complète avec paramètres personnalisés sera disponible prochainement.
-                """)
                 
                 # Run calibration
                 result = calibrator.calibrate(

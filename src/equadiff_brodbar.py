@@ -52,10 +52,16 @@ def enable_flux_tracking(flux_tracker=None):
     -----------
     flux_tracker : FluxTracker, optional
         FluxTracker object to store flux data
+        
+    Returns:
+    --------
+    bool
+        True if flux tracking was enabled successfully
     """
     global _FLUX_TRACKER, _TRACK_FLUXES
     _FLUX_TRACKER = flux_tracker
     _TRACK_FLUXES = True
+    return True
 
 def disable_flux_tracking():
     """Disable flux tracking."""
@@ -84,6 +90,7 @@ def disable_pH_modulation():
     """Disable pH-dependent enzyme modulation."""
     global _PH_PERTURBATION, _ENABLE_PH_MODULATION
     _PH_PERTURBATION = None
+    _ENABLE_PH_MODULATION = False
 
 def enable_bohr_tracking(bohr_tracker=None):
     """
@@ -473,7 +480,11 @@ def equadiff_brodbar(t: float,
                      x: NDArray[np.float64], 
                      thermo_constraints: Optional[object] = None,
                      custom_params: Optional[Dict[str, float]] = None,
-                     curve_fit_strength: float = 0.0) -> NDArray[np.float64]:
+                     curve_fit_strength: float = 0.0,
+                     flux_tracker: Optional[object] = None,
+                     ph_perturbation: Optional[object] = None,
+                     bohr_effect: Optional[object] = None,
+                     bohr_tracker: Optional[dict] = None) -> NDArray[np.float64]:
     """Brodbar RBC metabolic model with 108 ODEs (106 base metabolites + pHi + pHe) and adjustable curve fitting.
     
     Parameters:
@@ -494,6 +505,18 @@ def equadiff_brodbar(t: float,
         0.5 = 50% blend of MM kinetics and experimental curves
         1.0 = Full curve fitting (100% toward experimental data)
         Values > 1.0 = Aggressive fitting (not recommended)
+    flux_tracker : optional
+        FluxTracker object for recording reaction fluxes (thread-safe).
+        If None, falls back to global _FLUX_TRACKER for CLI compatibility.
+    ph_perturbation : optional
+        PhPerturbation object defining extracellular pH dynamics (thread-safe).
+        If None, falls back to global _PH_PERTURBATION for CLI compatibility.
+    bohr_effect : optional
+        BohrEffect object for O2 transport calculations (thread-safe).
+        If None, falls back to global _BOHR_EFFECT for CLI compatibility.
+    bohr_tracker : dict, optional
+        Dict for storing Bohr effect metrics (thread-safe).
+        If None, falls back to global _BOHR_TRACKER for CLI compatibility.
         
     Returns:
     --------
@@ -534,6 +557,13 @@ def equadiff_brodbar(t: float,
     # if thermo_constraints is None:
     #     thermo_constraints = ThermodynamicConstraints()
     
+    # Resolve tracking objects: prefer explicit params over globals (thread-safe)
+    _flux = flux_tracker if flux_tracker is not None else (_FLUX_TRACKER if _TRACK_FLUXES else None)
+    _ph_perturb = ph_perturbation if ph_perturbation is not None else (_PH_PERTURBATION if _ENABLE_PH_MODULATION else None)
+    _bohr_eff = bohr_effect if bohr_effect is not None else (_BOHR_EFFECT if _TRACK_BOHR else None)
+    _bohr_trk = bohr_tracker if bohr_tracker is not None else (_BOHR_TRACKER if _TRACK_BOHR else None)
+    _ph_enabled = _ph_perturb is not None and PH_MODULES_AVAILABLE
+    
     # Clean MM model - no electrical initialization needed
     
     # Skip loading initial conditions on every call for better performance
@@ -547,7 +577,7 @@ def equadiff_brodbar(t: float,
         _load_experimental_first_values()
     
     # Extend x only if pH perturbation is active (need pHe at index 107)
-    if _ENABLE_PH_MODULATION and _PH_PERTURBATION is not None:
+    if _ph_enabled:
         # Need 108 metabolites: 106 base + pHi + pHe
         if len(x) < NUM_TOTAL_METABOLITES:
             x_extended = np.ones(NUM_TOTAL_METABOLITES)
@@ -852,7 +882,7 @@ def equadiff_brodbar(t: float,
     pHe = x[PHE_INDEX] if len(x) > PHE_INDEX else PHYSIOLOGICAL_PHE  # Extracellular pH
     
     # Compute pH modulation factors for key enzymes (if enabled)
-    if _ENABLE_PH_MODULATION and PH_MODULES_AVAILABLE:
+    if _ph_enabled:
         f_pH_VHK = compute_pH_modulation(pHi, 'VHK')
         f_pH_VPFK = compute_pH_modulation(pHi, 'VPFK')
         f_pH_VPK = compute_pH_modulation(pHi, 'VPK')
@@ -894,12 +924,7 @@ def equadiff_brodbar(t: float,
     
     # Transport reactions (removed - defined later in complete section)
     
-    # Nucleotide metabolism
-    VAK = vmax_VAK * mm(x[26], km_ADO) * mm(max(ATP,1e-6), km_ATP)  # Adenosine kinase
-    VAK2 = vmax_VAK2 * mm(x[26], km_ADO) * mm(max(ATP,1e-6), km_ATP)  # Adenosine kinase 2
-    VAPRT = vmax_VAPRT * mm(x[25], km_ADE) * mm(x[41], km_PRPP)  # APRT
-    VADA = vmax_VADA * mm(x[26], km_ADO)  # Adenosine deaminase
-    VAMPD1 = vmax_VAMPD1 * mm(max(AMP,1e-6), km_AMP)  # AMP deaminase
+    # Nucleotide metabolism (defined in complete section below)
     
     # Pentose phosphate pathway (missing reactions)
     VR5PI = vmax_VR5PI * mm(x[5], km_RU5P)  # RU5P = R5P
@@ -923,6 +948,7 @@ def equadiff_brodbar(t: float,
     VHGPRT2 = vmax_VHGPRT2 * mm(x[31], km_GUA) * mm(max(AMP,1e-6), km_AMP) * mm(x[41], km_PRPP)  # GUA + AMP + PRPP => GMP
     VRKb = vmax_VRKb * mm(x[32], km_R1P)  # R1P = R5P
     VAK = vmax_VAK * mm(max(ADP,1e-6), km_ADP)  # 2 ADP = AMP + ATP
+    VAK2 = vmax_VAK2 * mm(x[26], km_ADO) * mm(max(ATP,1e-6), km_ATP)  # ADO + ATP => ADP + AMP
     VXAO = vmax_VXAO * mm(x[28], km_HYPX)  # HYPX => XAN + H2O2
     VXAO2 = vmax_VXAO2 * mm(x[29], km_XAN)  # XAN => URT
     VOPRIBT = vmax_VOPRIBT * mm(x[34], km_DEOXYINO)  # DEOXYINO = HYPX + D2RIBP
@@ -1024,7 +1050,7 @@ def equadiff_brodbar(t: float,
     
     # Nucleotide metabolites
     dxdt[25] = -VEADE - VAPRT - VADA  # ADE (adenine decreases due to efflux)
-    dxdt[26] = VEADO - VAK - VAK2 + VADA + VAHCY  # ADO
+    dxdt[26] = VEADO - VAK2 + VADA + VAHCY  # ADO (VAK=adenylate kinase does not involve ADO)
     dxdt[27] = VADA + Vnucleo2 - VEINO - VPNPase1  # INO
     dxdt[28] = VXAO + VPNPase1 + VOPRIBT - VHGPRT1 - VEHYPX  # HYPX
     dxdt[29] = VXAO - VXAO2 - VEXAN  # XAN
@@ -1034,7 +1060,7 @@ def equadiff_brodbar(t: float,
     dxdt[33] = -VOPRIBT  # D2RIBP
     dxdt[34] = -VOPRIBT  # DEOXYINO
     dxdt[35] = VPGK + VPK + VAK + VACLY - VHK - VPFK - VAK2 - VAPRT - VHGPRT1 - VPC - VGLNS - VGLUCYS - VGSS - VSAM - VASL - VASS - VRKa - VPRPPASe  # ATP
-    dxdt[36] = VHK + VPFK + VAK2 + VPC + VGLNS + VGLUCYS + VGSS + VASL + VRKa - VPGK - VPK - VAK  # ADP
+    dxdt[36] = VHK + VPFK + VAK2 + VPC + VGLNS + VGLUCYS + VGSS + VASL + VRKa - VPGK - VPK - 2*VAK  # ADP (VAK: 2 ADP = AMP + ATP)
     # AMP is algebraically determined: dxdt[37] = 0.0 (already set above)
     dxdt[38] = VADSS - VHGPRT2 - VGENASP  # GTP
     dxdt[39] = VGENASP - VADSS  # GDP
@@ -1114,7 +1140,7 @@ def equadiff_brodbar(t: float,
     # ===== DYNAMIC pH REGULATION =====
     # pHi (intracellular pH) - index 106
     # Influenced by: 1) metabolic H+ production, 2) membrane transport, 3) buffering
-    if _ENABLE_PH_MODULATION and PH_MODULES_AVAILABLE:
+    if _ph_enabled:
         # H+ production from glycolysis (lactate + NADH production)
         P_glycolysis = 0.1 * (VPK + VLDH)  # Pyruvate/lactate production generates H+
         
@@ -1155,9 +1181,9 @@ def equadiff_brodbar(t: float,
     # Only compute if system has 108 metabolites (with pH perturbation)
     if len(x) > PHE_INDEX:
         # Determined by perturbation configuration if pH modulation is enabled
-        if _ENABLE_PH_MODULATION and _PH_PERTURBATION is not None:
+        if _ph_enabled:
             # pHe follows the perturbation profile
-            pHe_target = _PH_PERTURBATION.get_pHe(t)
+            pHe_target = _ph_perturb.get_pHe(t)
             # Smooth transition to target (fast equilibration, ~1 min time constant)
             dxdt[PHE_INDEX] = (pHe_target - pHe) / (1.0/60.0)  # hours
         else:
@@ -1303,7 +1329,7 @@ def equadiff_brodbar(t: float,
     dxdt = np.clip(dxdt, -MAX_DERIVATIVE, MAX_DERIVATIVE)
     
     # Step 6: Track fluxes if enabled
-    if _TRACK_FLUXES and _FLUX_TRACKER is not None:
+    if _flux is not None:
         flux_dict = {
             # Glycolysis
             'VHK': VHK, 'VPGI': VPGI, 'VPFK': VPFK, 'VFDPA': VFDPA,
@@ -1343,10 +1369,10 @@ def equadiff_brodbar(t: float,
             'VEUREA': VEUREA, 'VENH4': VENH4, 'VEASP': VEASP,
             'VEMET': VEMET, 'VECYT': VECYT, 'VEALA': VEALA
         }
-        _FLUX_TRACKER.add_timepoint(t, flux_dict)
+        _flux.add_timepoint(t, flux_dict)
     
     # Step 7: Track Bohr effect if enabled
-    if _TRACK_BOHR and _BOHR_EFFECT is not None and _BOHR_TRACKER is not None:
+    if _bohr_eff is not None and _bohr_trk is not None:
         # Extract current pHi, pHe, and 2,3-BPG concentration
         current_pHi = x[PHI_INDEX] if len(x) > PHI_INDEX else PHYSIOLOGICAL_PH
         current_pHe = x[PHE_INDEX] if len(x) > PHE_INDEX else PHYSIOLOGICAL_PHE
@@ -1354,7 +1380,7 @@ def equadiff_brodbar(t: float,
         
         # Calculate P50 based on current pHi and BPG
         # NOTE: Using pHi because P50 is determined by RBC internal environment
-        P50 = _BOHR_EFFECT.calculate_P50(pH=current_pHi, bpg_conc=current_bpg)
+        P50 = _bohr_eff.calculate_P50(pH=current_pHi, bpg_conc=current_bpg)
         
         # Calculate O2 saturations at typical arterial and venous pO2
         # IMPORTANT: Use pHe for blood pH since O2 binding occurs at RBC surface
@@ -1366,11 +1392,11 @@ def equadiff_brodbar(t: float,
         pH_arterial = current_pHe  # Use actual extracellular pH
         pH_venous = current_pHe - 0.05  # Tissue CO2 addition (~0.05 pH drop)
         
-        sat_arterial = _BOHR_EFFECT.oxygen_saturation(pO2_arterial, pH_arterial, current_bpg)
-        sat_venous = _BOHR_EFFECT.oxygen_saturation(pO2_venous, pH_venous, current_bpg)
+        sat_arterial = _bohr_eff.oxygen_saturation(pO2_arterial, pH_arterial, current_bpg)
+        sat_venous = _bohr_eff.oxygen_saturation(pO2_venous, pH_venous, current_bpg)
         
         # Calculate O2 delivery metrics
-        O2_delivery = _BOHR_EFFECT.oxygen_delivery_to_tissues(
+        O2_delivery = _bohr_eff.oxygen_delivery_to_tissues(
             arterial_pO2=pO2_arterial,
             venous_pO2=pO2_venous,
             pH_arterial=pH_arterial,
@@ -1379,15 +1405,15 @@ def equadiff_brodbar(t: float,
         )
         
         # Store Bohr metrics
-        _BOHR_TRACKER['time'].append(t)
-        _BOHR_TRACKER['pHi'].append(current_pHi)
-        _BOHR_TRACKER['pHe'].append(current_pHe)  # Track extracellular pH
-        _BOHR_TRACKER['BPG_mM'].append(current_bpg)
-        _BOHR_TRACKER['P50_mmHg'].append(P50)
-        _BOHR_TRACKER['sat_arterial'].append(sat_arterial)
-        _BOHR_TRACKER['sat_venous'].append(sat_venous)
-        _BOHR_TRACKER['O2_extracted_fraction'].append(O2_delivery['extraction_fraction'])
-        _BOHR_TRACKER['O2_arterial_mL_per_dL'].append(O2_delivery['O2_arterial_mL_per_dL'])
-        _BOHR_TRACKER['O2_venous_mL_per_dL'].append(O2_delivery['O2_venous_mL_per_dL'])
+        _bohr_trk['time'].append(t)
+        _bohr_trk['pHi'].append(current_pHi)
+        _bohr_trk['pHe'].append(current_pHe)  # Track extracellular pH
+        _bohr_trk['BPG_mM'].append(current_bpg)
+        _bohr_trk['P50_mmHg'].append(P50)
+        _bohr_trk['sat_arterial'].append(sat_arterial)
+        _bohr_trk['sat_venous'].append(sat_venous)
+        _bohr_trk['O2_extracted_fraction'].append(O2_delivery['extraction_fraction'])
+        _bohr_trk['O2_arterial_mL_per_dL'].append(O2_delivery['O2_arterial_mL_per_dL'])
+        _bohr_trk['O2_venous_mL_per_dL'].append(O2_delivery['O2_venous_mL_per_dL'])
     
     return dxdt

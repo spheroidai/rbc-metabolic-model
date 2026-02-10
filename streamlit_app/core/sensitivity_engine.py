@@ -146,7 +146,7 @@ class SensitivityAnalyzer:
         dict
             Impact statistics grouped by pathway
         """
-        from flux_plotting import REACTION_INFO
+        from core.flux_plotting import REACTION_INFO
         
         flux_comparison = self.compare_flux_profiles()
         
@@ -283,21 +283,16 @@ class SensitivityAnalyzer:
         return metrics
 
 
-def run_comparative_simulation(use_custom_data: bool = False) -> Optional[Dict]:
+def run_comparative_simulation() -> Optional[Dict]:
     """
     Run simulation and ensure both datasets are available for comparison.
-    
-    Parameters:
-    -----------
-    use_custom_data : bool
-        Not used anymore - we always load both datasets
     
     Returns:
     --------
     dict or None
         Simulation results with both experimental datasets
     """
-    from simulation_engine import SimulationEngine
+    from core.simulation_engine import SimulationEngine
     
     # Temporarily set to use Bordbar data (default)
     original_mode = st.session_state.get('uploaded_data_mode', None)
@@ -306,19 +301,21 @@ def run_comparative_simulation(use_custom_data: bool = False) -> Optional[Dict]:
     # Always use Bordbar for simulation (ODE doesn't change anyway)
     st.session_state['uploaded_data_active'] = False
     
-    # Run simulation
-    engine = SimulationEngine()
-    
     try:
-        # Use default curve_fit_strength to get reasonable simulation
-        # that follows the model dynamics with some influence from Bordbar data
-        results = engine.run_simulation(
-            t_max=42,
-            curve_fit_strength=0.5,  # Moderate influence from experimental data
-            solver_method='LSODA',
-            ph_perturbation_type=None,
-            progress_callback=None
-        )
+        # Reuse cached simulation results if available (avoids redundant ODE integration)
+        cached = st.session_state.get('simulation_results')
+        if cached and cached.get('success', False):
+            results = cached
+        else:
+            # No cached results - run a fresh simulation
+            engine = SimulationEngine()
+            results = engine.run_simulation(
+                t_max=42,
+                curve_fit_strength=0.5,
+                solver_method='LSODA',
+                ph_perturbation_type=None,
+                progress_callback=None
+            )
         
         # Manually add custom validation data to results if available
         # Check original_active, not current state (we just set it to False)
