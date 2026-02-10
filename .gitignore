@@ -56,6 +56,9 @@ desktop.ini
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
+# Test data (local only)
+tests/
+
 # Analysis files (optional - keep for reference)
 # src_cleanup_analysis.md
 # root_files_analysis.md
