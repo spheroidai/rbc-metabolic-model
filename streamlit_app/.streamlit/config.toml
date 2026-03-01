@@ -13,7 +13,7 @@ fastReruns = true
 
 [server]
 enableXsrfProtection = true
-enableCORS = false
+enableCORS = true
 maxUploadSize = 200
 headless = true
 

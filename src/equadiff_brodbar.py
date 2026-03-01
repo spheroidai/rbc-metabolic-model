@@ -147,6 +147,9 @@ MIN_CONCENTRATION = 1e-6  # Minimum metabolite concentration (mM)
 MIN_KM = 1e-6  # Minimum Km to prevent division by zero
 MIN_LOG_VALUE = 1e-10  # Minimum value for logarithm operations
 MAX_DERIVATIVE = 1e3  # Maximum absolute derivative for numerical stability
+NONEG_THRESHOLD = 1e-3  # Derivative damping threshold (mM) — smoothly attenuates
+                         # negative derivatives when concentration is below this value
+                         # to prevent the ODE solver from overshooting below zero
 
 # ===== PHYSICAL CONSTANTS =====
 PHYSIOLOGICAL_PH = 7.2  # Normal intracellular pH for RBC
@@ -648,8 +651,16 @@ def equadiff_brodbar(t: float,
     vmax_VPGK = _get_param(custom_params, 'vmax_VPGK', 4.690379)       # Phosphoglycerate kinase
     vmax_VPGM = _get_param(custom_params, 'vmax_VPGM', 1.170854)       # Phosphoglycerate mutase
     vmax_VENOPGM = _get_param(custom_params, 'vmax_VENOPGM', 5.515612) # Enolase
+    # PEP product inhibition of enolase (competitive): slows P2G→PEP when PEP accumulates
+    ki_PEP_ENO = _get_param(custom_params, 'ki_PEP_ENO', 1e6)           # Inhibition constant [mM] (default=off; set ~0.1-0.5 to enable)
     vmax_VPK = _get_param(custom_params, 'vmax_VPK', 0.936322)         # Pyruvate kinase
-    vmax_VLDH = _get_param(custom_params, 'vmax_VLDH', 0.284952)       # Lactate dehydrogenase
+    # F16BP allosteric activation of PK (feedforward from PFK)
+    # In RBCs, PK exists in R (active) and T (inactive) states;
+    # F16BP strongly shifts equilibrium toward R-state.
+    ka_F16BP_PK = _get_param(custom_params, 'ka_F16BP_PK', 0.005)      # Half-max activation [mM] (~5 µM, literature)
+    n_F16BP_PK = _get_param(custom_params, 'n_F16BP_PK', 2.0)          # Hill coefficient (cooperativity)
+    alpha_F16BP_PK = _get_param(custom_params, 'alpha_F16BP_PK', 10.0)  # Max fold-activation above basal
+    vmax_VLDH = _get_param(custom_params, 'vmax_VLDH', 0.284952)       # Lactate dehydrogenase (recalibration needed after structural fixes)
     
     # PENTOSE PHOSPHATE PATHWAY
     vmax_VG6PDH = _get_param(custom_params, 'vmax_VG6PDH', 0.408870)   # Glucose-6-phosphate dehydrogenase
@@ -662,79 +673,93 @@ def equadiff_brodbar(t: float,
     vmax_VTAL = _get_param(custom_params, 'vmax_VTAL', 14.0)           # Transaldolase
     
     # NUCLEOTIDE METABOLISM
-    vmax_VAK = _get_param(custom_params, 'vmax_VAK', 5.0)              # Adenosine kinase
-    vmax_VAK2 = _get_param(custom_params, 'vmax_VAK2', 5.0)            # Adenosine kinase 2
+    vmax_VAK = _get_param(custom_params, 'vmax_VAK', 0.8)              # Adenylate kinase
+    vmax_VAK2 = _get_param(custom_params, 'vmax_VAK2', 0.5)            # Adenosine kinase
     vmax_VAPRT = _get_param(custom_params, 'vmax_VAPRT', 1.087935)     # Adenine phosphoribosyltransferase
-    vmax_VADA = _get_param(custom_params, 'vmax_VADA', 2.0)            # Adenosine deaminase
+    vmax_VADA = _get_param(custom_params, 'vmax_VADA', 0.3)            # Adenosine deaminase
     vmax_VAMPD1 = _get_param(custom_params, 'vmax_VAMPD1', 0.538065)   # AMP deaminase
     vmax_VHGPRT1 = _get_param(custom_params, 'vmax_VHGPRT1', 0.645581) # Hypoxanthine-guanine phosphoribosyltransferase 1
-    vmax_VHGPRT2 = _get_param(custom_params, 'vmax_VHGPRT2', 2.5)      # Hypoxanthine-guanine phosphoribosyltransferase 2
+    vmax_VHGPRT2 = _get_param(custom_params, 'vmax_VHGPRT2', 0.25)     # Hypoxanthine-guanine phosphoribosyltransferase 2
     vmax_VGMPS = _get_param(custom_params, 'vmax_VGMPS', 0.379205)     # GMP synthase
-    vmax_VH2O2 = _get_param(custom_params, 'vmax_VH2O2', 1.0)          # H2O2 metabolism
-    vmax_VADSS = _get_param(custom_params, 'vmax_VADSS', 3.0)          # Adenylosuccinate synthase
-    vmax_VIMPH = _get_param(custom_params, 'vmax_VIMPH', 2.0)          # IMP dehydrogenase
-    vmax_Vnucleo2 = _get_param(custom_params, 'vmax_Vnucleo2', 1.5)    # Nucleotidase
-    vmax_VADSL = _get_param(custom_params, 'vmax_VADSL', 4.0)          # Adenylosuccinate lyase
-    vmax_VRKb = _get_param(custom_params, 'vmax_VRKb', 3.0)            # Ribokinase b
-    vmax_VXAO = _get_param(custom_params, 'vmax_VXAO', 2.0)            # Xanthine oxidase
-    vmax_VXAO2 = _get_param(custom_params, 'vmax_VXAO2', 1.5)          # Xanthine oxidase 2
-    vmax_VOPRIBT = _get_param(custom_params, 'vmax_VOPRIBT', 1.0)      # Orotate phosphoribosyltransferase
-    vmax_VPNPase1 = _get_param(custom_params, 'vmax_VPNPase1', 2.5)    # Purine nucleoside phosphorylase
-    vmax_VRKa = _get_param(custom_params, 'vmax_VRKa', 4.0)            # Ribokinase a
-    vmax_VPRPPASe = _get_param(custom_params, 'vmax_VPRPPASe', 5.0)    # Phosphoribosyl pyrophosphate synthetase
+    vmax_VH2O2 = _get_param(custom_params, 'vmax_VH2O2', 0.5)          # H2O2 metabolism
+    vmax_VADSS = _get_param(custom_params, 'vmax_VADSS', 0.3)          # Adenylosuccinate synthase
+    vmax_VIMPH = _get_param(custom_params, 'vmax_VIMPH', 0.2)          # IMP dehydrogenase
+    vmax_Vnucleo2 = _get_param(custom_params, 'vmax_Vnucleo2', 0.15)   # Nucleotidase
+    vmax_VADSL = _get_param(custom_params, 'vmax_VADSL', 0.4)          # Adenylosuccinate lyase
+    vmax_VRKb = _get_param(custom_params, 'vmax_VRKb', 0.3)            # Ribokinase b
+    vmax_VXAO = _get_param(custom_params, 'vmax_VXAO', 0.2)            # Xanthine oxidase
+    vmax_VXAO2 = _get_param(custom_params, 'vmax_VXAO2', 0.15)         # Xanthine oxidase 2
+    vmax_VOPRIBT = _get_param(custom_params, 'vmax_VOPRIBT', 0.1)      # Orotate phosphoribosyltransferase
+    vmax_VPNPase1 = _get_param(custom_params, 'vmax_VPNPase1', 0.25)   # Purine nucleoside phosphorylase
+    vmax_VRKa = _get_param(custom_params, 'vmax_VRKa', 0.4)            # Ribokinase a
+    vmax_VPRPPASe = _get_param(custom_params, 'vmax_VPRPPASe', 0.5)    # Phosphoribosyl pyrophosphate synthetase
     
     # AMINO ACID METABOLISM
     vmax_VEGLN = _get_param(custom_params, 'vmax_VEGLN', 0.001000)     # Glutamine transporter
     vmax_VEGLU = _get_param(custom_params, 'vmax_VEGLU', 0.001000)     # Glutamate transporter
-    vmax_VGLNS = _get_param(custom_params, 'vmax_VGLNS', 4.0)          # Glutamine synthetase
+    vmax_VGLNS = _get_param(custom_params, 'vmax_VGLNS', 0.4)          # Glutamine synthetase
     vmax_VECYS = _get_param(custom_params, 'vmax_VECYS', 0.0005000)    # Cysteine transporter
-    vmax_VGDH = _get_param(custom_params, 'vmax_VGDH', 5.0)            # Glutamate dehydrogenase
-    vmax_VASPTA = _get_param(custom_params, 'vmax_VASPTA', 4.0)        # Aspartate aminotransferase
-    vmax_VALATA = _get_param(custom_params, 'vmax_VALATA', 3.5)        # Alanine aminotransferase
+    vmax_VGDH = _get_param(custom_params, 'vmax_VGDH', 0.5)            # Glutamate dehydrogenase (forward: AKG→GLU)
+    vmax_VGDH_rev = _get_param(custom_params, 'vmax_VGDH_rev', 0.1)      # Glutamate dehydrogenase (reverse: GLU→AKG, oxidative deamination)
+    vmax_VASPTA = _get_param(custom_params, 'vmax_VASPTA', 0.4)        # Aspartate aminotransferase
+    vmax_VALATA = _get_param(custom_params, 'vmax_VALATA', 0.35)       # Alanine aminotransferase
     
     # REDOX METABOLISM
-    vmax_VGSR = _get_param(custom_params, 'vmax_VGSR', 6.0)            # Glutathione reductase
+    vmax_VGSR = _get_param(custom_params, 'vmax_VGSR', 1.0)            # Glutathione reductase
     vmax_VGPX = _get_param(custom_params, 'vmax_VGPX', 1.079815)       # Glutathione peroxidase
-    vmax_VGLUCYS = _get_param(custom_params, 'vmax_VGLUCYS', 3.0)      # Glutamate-cysteine ligase
-    vmax_VGSS = _get_param(custom_params, 'vmax_VGSS', 4.0)            # Glutathione synthetase
+    vmax_VGLUCYS = _get_param(custom_params, 'vmax_VGLUCYS', 0.3)      # Glutamate-cysteine ligase
+    vmax_VGSS = _get_param(custom_params, 'vmax_VGSS', 0.4)            # Glutathione synthetase
     
     # TRANSPORT REACTIONS (continued)
     vmax_VEGLC = _get_param(custom_params, 'vmax_VEGLC', 1.077000)     # Glucose transporter
-    vmax_VEADO = _get_param(custom_params, 'vmax_VEADO', 2.0)          # Adenosine transport
-    vmax_VEPYR = _get_param(custom_params, 'vmax_VEPYR', 3.0)          # Pyruvate transport
-    vmax_VEXAN = _get_param(custom_params, 'vmax_VEXAN', 1.0)          # Xanthine transport
-    vmax_VECIT = _get_param(custom_params, 'vmax_VECIT', 2.5)          # Citrate transport
-    vmax_VEUREA = _get_param(custom_params, 'vmax_VEUREA', 1.5)        # Urea transport
-    vmax_VEFUM = _get_param(custom_params, 'vmax_VEFUM', 2.0)          # Fumarate transport
-    vmax_VEALA = _get_param(custom_params, 'vmax_VEALA', 2.0)          # Alanine transport
-    vmax_VEMET = _get_param(custom_params, 'vmax_VEMET', 2.0)          # Methionine transport
-    vmax_VEASP = _get_param(custom_params, 'vmax_VEASP', 2.5)          # Aspartate transport
-    vmax_VENH4 = _get_param(custom_params, 'vmax_VENH4', 4.0)          # Ammonia transport
-    vmax_VECYT = _get_param(custom_params, 'vmax_VECYT', 1.0)          # Cytidine transport
-    vmax_VEURT = _get_param(custom_params, 'vmax_VEURT', 1.5)          # Urate transport
+    vmax_VEADO = _get_param(custom_params, 'vmax_VEADO', 0.3)          # Adenosine transport
+    vmax_VEPYR = _get_param(custom_params, 'vmax_VEPYR', 0.3)          # Pyruvate transport
+    vmax_VEXAN = _get_param(custom_params, 'vmax_VEXAN', 0.15)         # Xanthine transport
+    vmax_VECIT = _get_param(custom_params, 'vmax_VECIT', 0.25)         # Citrate transport
+    vmax_VEUREA = _get_param(custom_params, 'vmax_VEUREA', 0.15)       # Urea transport
+    vmax_VEFUM = _get_param(custom_params, 'vmax_VEFUM', 0.2)          # Fumarate transport
+    vmax_VEALA = _get_param(custom_params, 'vmax_VEALA', 0.2)          # Alanine transport
+    vmax_VEMET = _get_param(custom_params, 'vmax_VEMET', 0.2)          # Methionine transport
+    vmax_VEASP = _get_param(custom_params, 'vmax_VEASP', 0.25)         # Aspartate transport
+    vmax_VENH4 = _get_param(custom_params, 'vmax_VENH4', 0.4)          # Ammonia transport
+    vmax_VECYT = _get_param(custom_params, 'vmax_VECYT', 0.1)          # Cytidine transport
+    vmax_VEURT = _get_param(custom_params, 'vmax_VEURT', 0.15)         # Urate transport
     
     # ADDITIONAL REACTIONS
-    vmax_V23DPGP = _get_param(custom_params, 'vmax_V23DPGP', 12.0)     # 2,3-bisphosphoglycerate phosphatase
-    vmax_VDPGM = _get_param(custom_params, 'vmax_VDPGM', 10.0)         # Diphosphoglycerate mutase
-    vmax_VME = _get_param(custom_params, 'vmax_VME', 3.0)              # Malic enzyme
-    vmax_VPC = _get_param(custom_params, 'vmax_VPC', 2.5)              # Pyruvate carboxylase
-    vmax_VACLY = _get_param(custom_params, 'vmax_VACLY', 4.0)          # ATP citrate lyase
-    vmax_VASTA = _get_param(custom_params, 'vmax_VASTA', 2.0)          # Argininosuccinate synthase
-    vmax_VCYSGLY = _get_param(custom_params, 'vmax_VCYSGLY', 3.0)      # Cysteinylglycine dipeptidase
-    vmax_VGGT = _get_param(custom_params, 'vmax_VGGT', 3.0)            # Gamma-glutamyltransferase
-    vmax_VGGCT = _get_param(custom_params, 'vmax_VGGCT', 2.5)          # Gamma-glutamylcyclotransferase
-    vmax_VMESE = _get_param(custom_params, 'vmax_VMESE', 2.0)          # Methionine synthase
-    vmax_VSAM = _get_param(custom_params, 'vmax_VSAM', 3.0)            # S-adenosylmethionine synthetase
-    vmax_VSAH = _get_param(custom_params, 'vmax_VSAH', 2.5)            # S-adenosylhomocysteine hydrolase
-    vmax_VAHCY = _get_param(custom_params, 'vmax_VAHCY', 3.0)          # Adenosylhomocysteinase
-    vmax_VCBS = _get_param(custom_params, 'vmax_VCBS', 2.0)            # Cystathionine beta-synthase
-    vmax_VCSE = _get_param(custom_params, 'vmax_VCSE', 2.5)            # Cystathionine gamma-lyase
-    vmax_VGENASP = _get_param(custom_params, 'vmax_VGENASP', 2.0)      # GTP:oxaloacetate carboxylyase
-    vmax_VFUM = _get_param(custom_params, 'vmax_VFUM', 5.0)            # Fumarase
-    vmax_VMLD = _get_param(custom_params, 'vmax_VMLD', 4.0)            # Malate dehydrogenase
-    vmax_VASL = _get_param(custom_params, 'vmax_VASL', 3.0)            # Argininosuccinate lyase
-    vmax_VASS = _get_param(custom_params, 'vmax_VASS', 2.5)            # Argininosuccinate synthase
-    vmax_Vpolyam = _get_param(custom_params, 'vmax_Vpolyam', 1.5)      # Polyamine synthesis
+    vmax_V23DPGP = _get_param(custom_params, 'vmax_V23DPGP', 3.0)      # 2,3-bisphosphoglycerate phosphatase
+    vmax_VDPGM = _get_param(custom_params, 'vmax_VDPGM', 2.5)          # Diphosphoglycerate mutase
+    vmax_VME = _get_param(custom_params, 'vmax_VME', 0.3)              # Malic enzyme
+    vmax_VPC = _get_param(custom_params, 'vmax_VPC', 0.15)             # Pyruvate carboxylase
+    vmax_VACLY = _get_param(custom_params, 'vmax_VACLY', 0.2)          # ATP citrate lyase
+    vmax_VACO = _get_param(custom_params, 'vmax_VACO', 0.15)           # Aconitase + ICDH (CIT + NADP => AKG + NADPH)
+    vmax_VASTA = _get_param(custom_params, 'vmax_VASTA', 0.15)         # Argininosuccinate synthase
+    vmax_VCYSGLY = _get_param(custom_params, 'vmax_VCYSGLY', 0.3)      # Cysteinylglycine dipeptidase
+    vmax_VGGT = _get_param(custom_params, 'vmax_VGGT', 0.3)            # Gamma-glutamyltransferase
+    vmax_VGGCT = _get_param(custom_params, 'vmax_VGGCT', 0.25)         # Gamma-glutamylcyclotransferase
+    vmax_VMESE = _get_param(custom_params, 'vmax_VMESE', 0.15)         # Methionine synthase
+    vmax_VSAM = _get_param(custom_params, 'vmax_VSAM', 0.2)            # S-adenosylmethionine synthetase
+    vmax_VSAH = _get_param(custom_params, 'vmax_VSAH', 0.2)            # S-adenosylhomocysteine hydrolase
+    vmax_VAHCY = _get_param(custom_params, 'vmax_VAHCY', 0.2)          # Adenosylhomocysteinase
+    vmax_VCBS = _get_param(custom_params, 'vmax_VCBS', 0.15)           # Cystathionine beta-synthase
+    vmax_VCSE = _get_param(custom_params, 'vmax_VCSE', 0.2)            # Cystathionine gamma-lyase
+    vmax_VGENASP = _get_param(custom_params, 'vmax_VGENASP', 0.2)      # GTP:oxaloacetate carboxylyase
+    vmax_VPEP_PASE = _get_param(custom_params, 'vmax_VPEP_PASE', 0.1)    # PEP phosphatase (ADP-independent PEP sink)
+    vmax_VGMPK = _get_param(custom_params, 'vmax_VGMPK', 0.15)            # GMP kinase (GMP + ATP => GDP + ADP)
+    vmax_VFUM = _get_param(custom_params, 'vmax_VFUM', 0.5)            # Fumarase
+    vmax_VMLD = _get_param(custom_params, 'vmax_VMLD', 0.4)            # Malate dehydrogenase
+    vmax_VASL = _get_param(custom_params, 'vmax_VASL', 0.2)            # Argininosuccinate lyase
+    vmax_VASS = _get_param(custom_params, 'vmax_VASS', 0.15)           # Argininosuccinate synthase
+    vmax_Vpolyam = _get_param(custom_params, 'vmax_Vpolyam', 0.15)     # Polyamine synthesis
+    vmax_VNDPK = _get_param(custom_params, 'vmax_VNDPK', 1.0)          # Nucleoside diphosphate kinase (GDP + ATP → GTP + ADP)
+    vmax_VNDPK_rev = _get_param(custom_params, 'vmax_VNDPK_rev', 1.0)    # NDPK reverse (GTP + ADP → GDP + ATP) — near-equilibrium enzyme
+    vmax_VAK_rev = _get_param(custom_params, 'vmax_VAK_rev', 0.5)        # Adenylate kinase reverse (AMP + ATP → 2 ADP)
+    vmax_Vnucleo_GMP = _get_param(custom_params, 'vmax_Vnucleo_GMP', 0.15)  # GMP 5'-nucleotidase + PNPase (lumped): GMP → GUA + R1P
+    vmax_VGDA = _get_param(custom_params, 'vmax_VGDA', 0.15)              # Guanine deaminase: GUA → XAN + NH4
+    vmax_VASPTA_rev = _get_param(custom_params, 'vmax_VASPTA_rev', 0.2)    # Reverse ASP transaminase: OAA + GLU → ASP + AKG (ASP has NO producer!)
+    vmax_VALATA_rev = _get_param(custom_params, 'vmax_VALATA_rev', 0.15)   # Reverse ALA transaminase: PYR + GLU → ALA + AKG (ALA has NO producer!)
+    vmax_VSHMT = _get_param(custom_params, 'vmax_VSHMT', 0.1)             # Serine hydroxymethyltransferase: SER + THF → GLY + METTHF
+    vmax_VPHGDH = _get_param(custom_params, 'vmax_VPHGDH', 0.1)           # Lumped serine biosynthesis: P3G + NAD + GLU → SER + AKG + NADH (PHGDH+PSAT+PSPH)
+    vmax_VOPLAH = _get_param(custom_params, 'vmax_VOPLAH', 0.15)           # 5-oxoprolinase: OXOP + ATP → GLU + ADP + Pi (closes gamma-glutamyl cycle)
     
     # ===== Km PARAMETERS (Michaelis-Menten Constants) =====
     # All Km values injectable for optimization
@@ -747,7 +772,8 @@ def equadiff_brodbar(t: float,
     km_EMAL = _get_param(custom_params, 'km_EMAL', 9.998876)    # Extracellular malate
     
     # GLYCOLYSIS PATHWAY Km VALUES
-    km_GLC = _get_param(custom_params, 'km_GLC', 49.864721)     # Glucose
+    km_GLC = _get_param(custom_params, 'km_GLC', 49.864721)     # Glucose (transport — GLUT1 Km ~5 mM, high value for storage solution context)
+    km_GLC_HK = _get_param(custom_params, 'km_GLC_HK', 0.05)     # Glucose (hexokinase — HK type I Km ~0.05 mM, much lower than transport)
     km_G6P = _get_param(custom_params, 'km_G6P', 0.146000)      # Glucose-6-phosphate
     km_F6P = _get_param(custom_params, 'km_F6P', 0.207000)      # Fructose-6-phosphate
     km_F16BP = _get_param(custom_params, 'km_F16BP', 0.094000)  # Fructose-1,6-bisphosphate
@@ -794,6 +820,7 @@ def equadiff_brodbar(t: float,
     km_CYS = _get_param(custom_params, 'km_CYS', 0.1)           # Cysteine
     km_MET = _get_param(custom_params, 'km_MET', 0.1)           # Methionine
     km_SER = _get_param(custom_params, 'km_SER', 0.2)           # Serine
+    km_P3G_PHGDH = _get_param(custom_params, 'km_P3G_PHGDH', 0.3)  # 3-phosphoglycerate (PHGDH substrate)
     km_ARG = _get_param(custom_params, 'km_ARG', 0.5)           # Arginine
     
     # REDOX METABOLISM Km VALUES
@@ -803,7 +830,9 @@ def equadiff_brodbar(t: float,
     km_H2O2 = _get_param(custom_params, 'km_H2O2', 0.001)       # Hydrogen peroxide
     
     # COFACTOR Km VALUES
-    km_ATP = _get_param(custom_params, 'km_ATP', 0.569395)      # ATP
+    km_ATP = _get_param(custom_params, 'km_ATP', 0.569395)      # ATP (shared — used by minor ATP consumers)
+    km_ATP_HK = _get_param(custom_params, 'km_ATP_HK', 0.5)     # ATP for hexokinase (HK type I: lit Km ~0.5-1.0 mM, high affinity)
+    km_ATP_PFK = _get_param(custom_params, 'km_ATP_PFK', 0.1)   # ATP as PFK substrate (lit Km ~0.05-0.2 mM, very high affinity)
     km_ADP = _get_param(custom_params, 'km_ADP', 0.402663)      # ADP
     km_NAD = _get_param(custom_params, 'km_NAD', 0.2)           # NAD
     km_NADH = _get_param(custom_params, 'km_NADH', 0.1)         # NADH
@@ -870,11 +899,11 @@ def equadiff_brodbar(t: float,
     #
     # This enables ML-based parameter optimization without modifying source code.
     
-    # Ratio-based Km values for regulatory effects
-    km_NAD_NADH = 1.0    # NAD/NADH ratio effect
-    km_NADH_NAD = 1.0    # NADH/NAD ratio effect
-    km_NADP_NADPH = 1.0  # NADP/NADPH ratio effect
-    km_ADP_ATP = 1.0     # ADP/ATP ratio effect
+    # Ratio-based Km values for regulatory effects (now injectable for calibration)
+    km_NAD_NADH = _get_param(custom_params, 'km_NAD_NADH', 1.0)      # NAD/NADH ratio effect (GAPDH)
+    km_NADH_NAD = _get_param(custom_params, 'km_NADH_NAD', 1.0)      # NADH/NAD ratio effect (LDH)
+    km_NADP_NADPH = _get_param(custom_params, 'km_NADP_NADPH', 1.0)  # NADP/NADPH ratio effect (G6PDH, 6PGD)
+    km_ADP_ATP = _get_param(custom_params, 'km_ADP_ATP', 1.0)        # ADP/ATP ratio effect (PGK, PK — ATP producers)
     
     # ===== pH-DEPENDENT ENZYME MODULATION =====
     # Extract pH values
@@ -903,21 +932,23 @@ def equadiff_brodbar(t: float,
     # All metabolic fluxes use MM kinetics, modulated by pH if enabled
     
     # Glycolysis pathway reactions (with pH modulation)
-    VHK = f_pH_VHK * vmax_VHK * mm(x[0], km_GLC)  # Hexokinase: GLC -> G6P [pH-modulated]
+    VHK = f_pH_VHK * vmax_VHK * mm(x[0], km_GLC_HK) * mm(max(ATP,1e-6), km_ATP_HK)  # Hexokinase: GLC + ATP -> G6P + ADP [pH-modulated, uses HK-specific km_ATP_HK]
     VPGI = vmax_VPGI * mm(x[1], km_G6P)  # PGI: G6P -> F6P
-    VPFK = f_pH_VPFK * vmax_VPFK * mm(x[2], km_F6P)  # PFK: F6P -> F16BP [pH-modulated - MOST SENSITIVE!]
+    VPFK = f_pH_VPFK * vmax_VPFK * mm(x[2], km_F6P) * mm(max(ATP,1e-6), km_ATP_PFK)  # PFK: F6P + ATP -> F16BP + ADP [pH-modulated, uses PFK-specific km_ATP_PFK]
     VFDPA = vmax_VFDPA * mm(x[11], km_F16BP)  # FDPA: F16BP -> DHCP + GA3P
     VTPI = vmax_VTPI * mm(x[12], km_DHCP)  # TPI: DHCP <-> GA3P
     VGAPDH = f_pH_VGAPDH * vmax_VGAPDH * mm(x[10], km_GA3P) * mm(NAD/(NADH+1e-6), km_NAD_NADH)  # GAPDH [pH-modulated]
     VPGK = f_pH_VPGK * vmax_VPGK * mm(x[13], km_B13PG) * mm(ADP/(ATP+1e-6), km_ADP_ATP)  # PGK [pH-modulated]
     VPGM = vmax_VPGM * mm(x[14], km_P3G)  # PGM: P3G -> P2G
-    VPK = f_pH_VPK * vmax_VPK * mm(x[17], km_PEP) * mm(ADP/(ATP+1e-6), km_ADP_ATP)  # PK [pH-modulated]
+    # PK with F16BP allosteric activation: basal rate * (1 + alpha * Hill(F16BP))
+    f_F16BP_PK = 1.0 + alpha_F16BP_PK * (x[11]**n_F16BP_PK / (ka_F16BP_PK**n_F16BP_PK + x[11]**n_F16BP_PK + 1e-30))
+    VPK = f_pH_VPK * vmax_VPK * f_F16BP_PK * mm(x[17], km_PEP) * mm(ADP/(ATP+1e-6), km_ADP_ATP)  # PK [pH + F16BP-modulated]
     VLDH = f_pH_VLDH * vmax_VLDH * mm(x[18], km_PYR) * mm(NADH/(NAD+1e-6), km_NADH_NAD)  # LDH [pH-modulated]
     
     # Pentose phosphate pathway (with pH modulation)
     VG6PDH = f_pH_VG6PDH * vmax_VG6PDH * mm(x[1], km_G6P) * mm(NADP/(NADPH+1e-6), km_NADP_NADPH)  # G6PDH [pH-modulated]
-    VPGLS = vmax_VPGLS * mm(x[4], km_GO6P)  # PGLS: GO6P -> GL6P
-    V6PGD = vmax_V6PGD * mm(x[3], km_GL6P) * mm(NADP/(NADPH+1e-6), km_NADP_NADPH)  # 6PGD: GL6P -> RU5P
+    VPGLS = vmax_VPGLS * mm(x[3], km_GL6P)  # PGLS: GL6P -> GO6P
+    V6PGD = vmax_V6PGD * mm(x[4], km_GO6P) * mm(NADP/(NADPH+1e-6), km_NADP_NADPH)  # 6PGD: GO6P + NADP -> RU5P + NADPH
     VTKL1 = vmax_VTKL1 * mm(x[6], km_R5P) * mm(x[7], km_X5P)  # TKL1
     VTKL2 = vmax_VTKL2 * mm(x[8], km_E4P) * mm(x[7], km_X5P)  # TKL2
     VTAL = vmax_VTAL * mm(x[10], km_GA3P) * mm(x[9], km_S7P)  # TAL
@@ -931,7 +962,9 @@ def equadiff_brodbar(t: float,
     VR5PE = vmax_VR5PE * mm(x[5], km_RU5P)  # RU5P = X5P
     
     # Glycolysis and 2,3-BPG shunt (with pH modulation)
-    VENOPGM = f_pH_VENOPGM * vmax_VENOPGM * mm(x[16], km_P2G)  # P2G = PEP [pH-modulated]
+    # Enolase with competitive product inhibition by PEP: Km_app = Km * (1 + [PEP]/Ki)
+    km_P2G_app = km_P2G * (1.0 + x[17] / (ki_PEP_ENO + 1e-30))
+    VENOPGM = f_pH_VENOPGM * vmax_VENOPGM * mm(x[16], km_P2G_app)  # P2G → PEP [pH + product-inhibited]
     V23DPGP = f_pH_V23DPGP * vmax_V23DPGP * mm(x[15], km_B23PG)  # B23PG => P3G [pH-modulated]
     VDPGM = f_pH_VDPGM * vmax_VDPGM * mm(x[13], km_B13PG)  # B13PG => B23PG [pH-modulated - CRITICAL FOR O2 AFFINITY!]
     
@@ -945,9 +978,9 @@ def equadiff_brodbar(t: float,
     Vnucleo2 = vmax_Vnucleo2 * mm(x[42], km_IMP)  # IMP => INO
     VADSL = vmax_VADSL * mm(x[44], km_ADESUC)  # ADESUC = FUM + AMP
     VGMPS = vmax_VGMPS * mm(x[43], km_XMP) * mm(x[61], km_GLN) * mm(max(ATP,1e-6), km_ATP)  # XMP + GLN + ATP => GMP + AMP
-    VHGPRT2 = vmax_VHGPRT2 * mm(x[31], km_GUA) * mm(max(AMP,1e-6), km_AMP) * mm(x[41], km_PRPP)  # GUA + AMP + PRPP => GMP
+    VHGPRT2 = vmax_VHGPRT2 * mm(x[31], km_GUA) * mm(x[41], km_PRPP)  # GUA + PRPP => GMP + PPi (real HGPRT — AMP is NOT a substrate)
     VRKb = vmax_VRKb * mm(x[32], km_R1P)  # R1P = R5P
-    VAK = vmax_VAK * mm(max(ADP,1e-6), km_ADP)  # 2 ADP = AMP + ATP
+    VAK = vmax_VAK * mm(max(ADP,1e-6), km_ADP) - vmax_VAK_rev * mm(max(AMP,1e-6), km_AMP) * mm(max(ATP,1e-6), km_ATP)  # 2 ADP ⇌ AMP + ATP (bidirectional adenylate kinase)
     VAK2 = vmax_VAK2 * mm(x[26], km_ADO) * mm(max(ATP,1e-6), km_ATP)  # ADO + ATP => ADP + AMP
     VXAO = vmax_VXAO * mm(x[28], km_HYPX)  # HYPX => XAN + H2O2
     VXAO2 = vmax_VXAO2 * mm(x[29], km_XAN)  # XAN => URT
@@ -955,6 +988,9 @@ def equadiff_brodbar(t: float,
     VPNPase1 = vmax_VPNPase1 * mm(x[27], km_INO)  # INO = HYPX + R1P
     VRKa = vmax_VRKa * mm(x[82], km_RIB) * mm(max(ATP,1e-6), km_ATP)  # RIB + ATP = R5P + ADP
     VPRPPASe = vmax_VPRPPASe * mm(x[6], km_R5P) * mm(max(ATP,1e-6), km_ATP)  # R5P + ATP = PRPP + AMP
+    VNDPK = vmax_VNDPK * mm(x[39], km_GDP) * mm(max(ATP,1e-6), km_ATP) - vmax_VNDPK_rev * mm(x[38], km_GTP) * mm(max(ADP,1e-6), km_ADP)  # GDP + ATP ⇌ GTP + ADP (bidirectional NDPK — near-equilibrium)
+    Vnucleo_GMP = vmax_Vnucleo_GMP * mm(x[40], km_GMP)  # GMP → GUA + R1P (5'-nucleotidase + PNPase lumped — guanylate pool exit)
+    VGDA = vmax_VGDA * mm(x[31], km_GUA)  # GUA → XAN + NH4 (guanine deaminase)
     
     # Transport reactions (complete all extracellular)
     # ML-optimized glucose consumption: EGLC -> GLC (consumption from extracellular pool)
@@ -968,9 +1004,9 @@ def equadiff_brodbar(t: float,
     VEINO = vmax_VEINO * mm(x[27], km_INO)  # INO efflux (ML-optimized)
     # ML-optimized hypoxanthine production: HYPX -> EHYPX (hypoxanthine efflux)
     VEHYPX = vmax_VEHYPX * mm(x[28], km_HYPX)  # HYPX efflux (ML-optimized)
-    VEURT = vmax_VEURT * (mm(x[30], km_URT) - mm(x[97], km_EURT))  # URT = EURT
+    VEURT = vmax_VEURT * mm(x[30], km_URT)  # URT → EURT [irreversible efflux per Rxn_RBC.txt]
     VEPYR = vmax_VEPYR * (mm(x[18], km_PYR) - mm(x[98], km_EPYR))  # PYR = EPYR
-    VEXAN = vmax_VEXAN * (mm(x[29], km_XAN) - mm(x[99], km_EXAN))  # XAN = EXAN
+    VEXAN = vmax_VEXAN * mm(x[29], km_XAN)  # XAN → EXAN [irreversible efflux per Rxn_RBC.txt]
     VECIT = vmax_VECIT * (mm(x[22], km_CIT) - mm(x[103], km_ECIT))  # CIT = ECIT
     VEUREA = vmax_VEUREA * (mm(x[73], km_UREA) - mm(x[96], km_EUREA))  # UREA = EUREA
     VEFUM = vmax_VEFUM * (mm(x[81], km_FUM) - mm(x[102], km_EFUM))  # FUM = EFUM
@@ -988,11 +1024,12 @@ def equadiff_brodbar(t: float,
     
     # Amino acid and one-carbon metabolism
     VME = vmax_VME * mm(x[20], km_MAL) * mm(max(NADP,1e-6), km_NADP)  # MAL + NADP = PYR + NADPH
-    VPC = vmax_VPC * mm(x[18], km_PYR) * mm(max(ATP,1e-6), km_ATP)  # PYR + ATP = OAA + ADP
-    VACLY = vmax_VACLY * mm(x[21], km_OAA) * mm(x[74], km_ACCOA)  # OAA + ACCOA = CIT + COA + ATP
-    VASTA = vmax_VASTA * mm(x[24], km_SUCCOA) * mm(x[53], km_ARG)  # SUCCOA + ARG = COA + SUCARG
+    VPC = 0.0  # RBC-strict: remove pyruvate carboxylase (mitochondrial/anaplerotic)
+    VACLY = 0.0  # RBC-strict: remove citrate synthase/ACL-like TCA entry from mature RBC model
+    VACO = 0.0  # RBC-strict: remove aconitase/ICDH-like conversion from mature RBC model
+    VASTA = 0.0  # RBC-strict: remove urea-cycle-associated succinyl-ARG branch
     VCYSGLY = vmax_VCYSGLY * mm(x[68], km_CYSGLY)  # CYSGLY => CYS + GLY
-    VGDH = vmax_VGDH * mm(x[59], km_AKG) * mm(max(NADPH,1e-6), km_NADPH) * mm(x[62], km_NH4)  # AKG + NADPH + NH4 = GLU + NADP
+    VGDH = vmax_VGDH * mm(x[59], km_AKG) * mm(max(NADPH,1e-6), km_NADPH) * mm(x[62], km_NH4) - vmax_VGDH_rev * mm(x[60], km_GLU) * mm(max(NADP,1e-6), km_NADP)  # AKG + NADPH + NH4 ↔ GLU + NADP (bidirectional GDH)
     VGLNS = vmax_VGLNS * mm(x[60], km_GLU) * mm(max(ATP,1e-6), km_ATP) * mm(x[62], km_NH4)  # GLU + ATP + NH4 = GLN + ADP
     VGLUCYS = vmax_VGLUCYS * mm(x[60], km_GLU) * mm(x[67], km_CYS) * mm(max(ATP,1e-6), km_ATP)  # GLU + CYS + ATP => GLUCYS + ADP
     VGSS = vmax_VGSS * mm(x[69], km_GLUCYS) * mm(x[66], km_GLY) * mm(max(ATP,1e-6), km_ATP)  # GLUCYS + GLY + ATP => GSH + ADP
@@ -1003,16 +1040,21 @@ def equadiff_brodbar(t: float,
     VSAM = vmax_VSAM * mm(x[48], km_MET) * mm(max(ATP,1e-6), km_ATP)  # MET + ATP => ADOMET
     VSAH = vmax_VSAH * mm(x[50], km_ADOMET) * mm(x[84], km_CYT)  # ADOMET + CYT => SAH + METCYT
     VAHCY = vmax_VAHCY * mm(x[51], km_SAH)  # SAH = HCYS + ADO
+    VSHMT = vmax_VSHMT * mm(x[57], km_SER) * mm(x[49], km_THF)  # SER + THF → GLY + METTHF (serine hydroxymethyltransferase — closes one-carbon cycle)
+    VPHGDH = vmax_VPHGDH * mm(x[14], km_P3G_PHGDH) * mm(max(NAD,1e-6), km_NAD) * mm(x[60], km_GLU)  # Lumped serine biosynthesis: P3G + NAD + GLU → SER + AKG + NADH (PHGDH+PSAT+PSPH)
+    VOPLAH = vmax_VOPLAH * mm(x[65], km_OXOP) * mm(max(ATP,1e-6), km_ATP)  # 5-oxoprolinase: OXOP + ATP → GLU + ADP + Pi (closes gamma-glutamyl cycle)
     VCBS = vmax_VCBS * mm(x[46], km_HCYS) * mm(x[57], km_SER)  # HCYS + SER => CYSTHIO
     VCSE = vmax_VCSE * mm(x[45], km_CYSTHIO)  # CYSTHIO = CYS + AKG + NH4
-    VASPTA = vmax_VASPTA * mm(x[56], km_ASP) * mm(x[59], km_AKG)  # ASP + AKG = OAA + GLU
-    VALATA = vmax_VALATA * mm(x[58], km_ALA) * mm(x[59], km_AKG)  # ALA + AKG = PYR + GLU
-    VGENASP = vmax_VGENASP * mm(x[21], km_OAA) * mm(x[38], km_GTP)  # OAA + GTP => PEP + GDP
+    VASPTA = vmax_VASPTA * mm(x[56], km_ASP) * mm(x[59], km_AKG) - vmax_VASPTA_rev * mm(x[21], km_OAA) * mm(x[60], km_GLU)  # ASP + AKG ⇌ OAA + GLU (bidirectional — reverse provides ASP from OAA+GLU)
+    VALATA = vmax_VALATA * mm(x[58], km_ALA) * mm(x[59], km_AKG) - vmax_VALATA_rev * mm(x[18], km_PYR) * mm(x[60], km_GLU)  # ALA + AKG ⇌ PYR + GLU (bidirectional — reverse provides ALA from PYR+GLU)
+    VGENASP = 0.0  # RBC-strict: remove OAA+GTP->PEP+GDP branch
+    VPEP_PASE = vmax_VPEP_PASE * mm(x[17], km_PEP)  # PEP => PYR [non-specific phosphatase, ADP-independent]
+    VGMPK = vmax_VGMPK * mm(x[40], km_GMP) * mm(max(ATP,1e-6), km_ATP)  # GMP + ATP => GDP + ADP [GMP kinase]
     VFUM = vmax_VFUM * mm(x[81], km_FUM)  # FUM = MAL
     VMLD = vmax_VMLD * mm(x[20], km_MAL) * mm(max(NAD,1e-6), km_NAD)  # MAL + NAD = OAA + NADH
-    VASL = vmax_VASL * mm(x[54], km_ARGSUC) * mm(max(ATP,1e-6), km_ATP)  # ARGSUC + ATP = ARG + ADP + FUM
-    VASS = vmax_VASS * mm(x[55], km_CITR) * mm(x[56], km_ASP) * mm(max(ATP,1e-6), km_ATP)  # CITR + ASP + ATP = ARGSUC + AMP
-    Vpolyam = vmax_Vpolyam * mm(x[53], km_ARG)  # ARG => ORN + UREA
+    VASL = 0.0  # RBC-strict: remove argininosuccinate lyase branch
+    VASS = 0.0  # RBC-strict: remove ATP-consuming argininosuccinate synthase branch
+    Vpolyam = 0.0  # RBC-strict: remove polyamine/urea branch
     
     # Redox and detoxification
     VH2O2 = vmax_VH2O2 * mm(x[79], km_H2O2)  # H2O2 => O2
@@ -1025,46 +1067,46 @@ def equadiff_brodbar(t: float,
     dxdt[0] = VEGLC - VHK  # GLC (receives glucose from EGLC consumption)
     dxdt[1] = VHK - VPGI - VG6PDH  # G6P
     dxdt[2] = VPGI - VPFK + VTKL2 + VTAL  # F6P
-    dxdt[3] = VPGLS - V6PGD  # GL6P
-    dxdt[4] = VG6PDH - VPGLS  # GO6P
+    dxdt[3] = VG6PDH - VPGLS  # GL6P (G6PDH produces GL6P, PGLS consumes it)
+    dxdt[4] = VPGLS - V6PGD  # GO6P (PGLS produces GO6P, 6PGD consumes it)
     dxdt[5] = V6PGD - VR5PI - VR5PE  # RU5P
     dxdt[6] = VR5PI + VRKb + VRKa - VTKL1 - VPRPPASe  # R5P
     dxdt[7] = VR5PE - VTKL1 - VTKL2  # X5P
-    dxdt[8] = VTKL2 - VTAL  # E4P
+    dxdt[8] = VTAL - VTKL2  # E4P (TKL2 consumes E4P; TAL produces E4P)
     dxdt[9] = VTKL1 - VTAL  # S7P
     dxdt[10] = VFDPA + VTPI - VGAPDH + VTKL1 + VTKL2 - VTAL  # GA3P
     dxdt[11] = VPFK - VFDPA  # F16BP
     dxdt[12] = VFDPA - VTPI  # DHCP
     dxdt[13] = VGAPDH - VPGK - VDPGM  # B13PG
-    dxdt[14] = VPGK - VPGM + V23DPGP  # P3G
+    dxdt[14] = VPGK - VPGM + V23DPGP - VPHGDH  # P3G (PHGDH consumes P3G for serine biosynthesis)
     dxdt[15] = VDPGM - V23DPGP  # B23PG
     dxdt[16] = VPGM - VENOPGM  # P2G
-    dxdt[17] = VENOPGM - VPK + VGENASP  # PEP
-    dxdt[18] = VPK - VLDH - VEPYR + VME + VALATA - VPC  # PYR
+    dxdt[17] = VENOPGM - VPK - VPEP_PASE  # PEP (RBC-strict: VGENASP removed)
+    dxdt[18] = VPK - VLDH - VEPYR + VME + VALATA + VPEP_PASE  # PYR (RBC-strict: VPC removed)
     dxdt[19] = VLDH - VELAC  # LAC
-    dxdt[20] = VFUM - VMLD - VEMAL  # MAL
-    dxdt[21] = VPC + VMLD + VASPTA - VACLY - VGENASP  # OAA
-    dxdt[22] = VACLY - VECIT  # CIT
-    dxdt[23] = VACLY + VASTA  # COA (simplified)
-    dxdt[24] = -VASTA  # SUCCOA (simplified)
+    dxdt[20] = VFUM - VME - VMLD - VEMAL  # MAL (ME consumes MAL)
+    dxdt[21] = VMLD + VASPTA  # OAA (RBC-strict: VPC, VACLY, VGENASP removed)
+    dxdt[22] = -VECIT  # CIT (RBC-strict: VACLY and VACO removed)
+    dxdt[23] = 0.0  # COA (RBC-strict: VACLY and VASTA removed)
+    dxdt[24] = 0.0  # SUCCOA (RBC-strict: VASTA removed)
     
     # Nucleotide metabolites
-    dxdt[25] = -VEADE - VAPRT - VADA  # ADE (adenine decreases due to efflux)
-    dxdt[26] = VEADO - VAK2 + VADA + VAHCY  # ADO (VAK=adenylate kinase does not involve ADO)
+    dxdt[25] = -VEADE - VAPRT  # ADE (removed VADA: adenosine deaminase involves ADO not ADE)
+    dxdt[26] = -VEADO - VAK2 - VADA + VAHCY  # ADO (VADA consumes ADO; VEADO efflux decreases ADO)
     dxdt[27] = VADA + Vnucleo2 - VEINO - VPNPase1  # INO
-    dxdt[28] = VXAO + VPNPase1 + VOPRIBT - VHGPRT1 - VEHYPX  # HYPX
-    dxdt[29] = VXAO - VXAO2 - VEXAN  # XAN
+    dxdt[28] = -VXAO + VPNPase1 + VOPRIBT - VHGPRT1 - VEHYPX  # HYPX (XAO consumes HYPX)
+    dxdt[29] = VXAO + VGDA - VXAO2 - VEXAN  # XAN (VGDA: guanine deaminase adds XAN)
     dxdt[30] = VXAO2 - VEURT  # URT
-    dxdt[31] = -VHGPRT2  # GUA
-    dxdt[32] = VPNPase1 - VRKb  # R1P
-    dxdt[33] = -VOPRIBT  # D2RIBP
+    dxdt[31] = Vnucleo_GMP - VHGPRT2 - VGDA  # GUA (produced by GMP nucleotidase, consumed by HGPRT2 and guanine deaminase)
+    dxdt[32] = VPNPase1 + Vnucleo_GMP - VRKb  # R1P (Vnucleo_GMP also produces R1P)
+    dxdt[33] = VOPRIBT  # D2RIBP (OPRIBT produces D2RIBP from DEOXYINO)
     dxdt[34] = -VOPRIBT  # DEOXYINO
-    dxdt[35] = VPGK + VPK + VAK + VACLY - VHK - VPFK - VAK2 - VAPRT - VHGPRT1 - VPC - VGLNS - VGLUCYS - VGSS - VSAM - VASL - VASS - VRKa - VPRPPASe  # ATP
-    dxdt[36] = VHK + VPFK + VAK2 + VPC + VGLNS + VGLUCYS + VGSS + VASL + VRKa - VPGK - VPK - 2*VAK  # ADP (VAK: 2 ADP = AMP + ATP)
-    # AMP is algebraically determined: dxdt[37] = 0.0 (already set above)
-    dxdt[38] = VADSS - VHGPRT2 - VGENASP  # GTP
-    dxdt[39] = VGENASP - VADSS  # GDP
-    dxdt[40] = VGMPS + VHGPRT2  # GMP
+    dxdt[35] = VPGK + VPK + VAK - VHK - VPFK - VAK2 - VGLNS - VGLUCYS - VGSS - VSAM - VRKa - VPRPPASe - VGMPS - VGMPK - VNDPK - VOPLAH  # ATP (RBC-strict: removed VPC, VACLY, VASS; OPLAH consumes ATP)
+    dxdt[36] = VHK + VPFK + VAK2 + VGLNS + VGLUCYS + VGSS + VRKa + VGMPK + VNDPK + VOPLAH - VPGK - VPK - 2*VAK  # ADP (RBC-strict: VPC removed; OPLAH produces ADP)
+    dxdt[37] = VAK + VAK2 + VADSL + VPRPPASe + VGMPS + VAPRT + VSAM - VAMPD1  # AMP (VSAM: ATP→AMP+PPi conserves adenylates; VHGPRT2 no longer consumes AMP)
+    dxdt[38] = VNDPK - VADSS  # GTP (RBC-strict: VGENASP removed)
+    dxdt[39] = VADSS + VGMPK - VNDPK  # GDP (RBC-strict: VGENASP removed)
+    dxdt[40] = VGMPS + VHGPRT2 - VGMPK - Vnucleo_GMP  # GMP (VGMPK + Vnucleo_GMP consume GMP — guanylate pool exit)
     dxdt[41] = VPRPPASe - VAPRT - VHGPRT1 - VHGPRT2  # PRPP
     dxdt[42] = VHGPRT1 + VAMPD1 - VADSS - VIMPH - Vnucleo2  # IMP
     dxdt[43] = VIMPH - VGMPS  # XMP
@@ -1072,70 +1114,70 @@ def equadiff_brodbar(t: float,
     
     # Amino acid and one-carbon metabolism
     dxdt[45] = VCBS - VCSE  # CYSTHIO
-    dxdt[46] = VMESE + VAHCY - VCBS  # HCYS
-    dxdt[47] = -VMESE  # METTHF
+    dxdt[46] = -VMESE + VAHCY - VCBS  # HCYS (MESE consumes HCYS)
+    dxdt[47] = -VMESE + VSHMT  # METTHF (SHMT produces METTHF from SER+THF)
     dxdt[48] = VMESE - VSAM - VEMET  # MET
-    dxdt[49] = VMESE  # THF
+    dxdt[49] = VMESE - VSHMT  # THF (SHMT consumes THF)
     dxdt[50] = VSAM - VSAH  # ADOMET
     dxdt[51] = VSAH - VAHCY  # SAH
     dxdt[52] = VSAH  # METCYT
-    dxdt[53] = VASL - VASTA - Vpolyam  # ARG
-    dxdt[54] = VASS - VASL  # ARGSUC
-    dxdt[55] = -VASS  # CITR
-    dxdt[56] = VADSL + VCSE - VADSS - VASS - VASPTA - VEASP  # ASP
-    dxdt[57] = -VCBS  # SER
-    dxdt[58] = VALATA - VEALA  # ALA
-    dxdt[59] = VGDH + VCSE - VASPTA - VALATA  # AKG
-    dxdt[60] = VASPTA + VALATA - VGDH - VGLNS - VGLUCYS - VEGLU  # GLU
+    dxdt[53] = 0.0  # ARG (RBC-strict: VASL/VASTA/Vpolyam removed)
+    dxdt[54] = 0.0  # ARGSUC (RBC-strict: VASS/VASL removed)
+    dxdt[55] = 0.0  # CITR (RBC-strict: VASS removed)
+    dxdt[56] = -VADSS - VASPTA - VEASP  # ASP (RBC-strict: VASS removed)
+    dxdt[57] = VPHGDH - VCBS - VSHMT  # SER (PHGDH produces SER; SHMT and CBS consume SER)
+    dxdt[58] = -VALATA - VEALA  # ALA (ALATA consumes ALA)
+    dxdt[59] = -VGDH + VCSE - VASPTA - VALATA + VPHGDH  # AKG (PHGDH produces AKG; RBC-strict: VACO removed)
+    dxdt[60] = VASPTA + VALATA + VGDH + VGMPS + VOPLAH - VGLNS - VGLUCYS - VEGLU - VPHGDH  # GLU (GDH, GMPS, OPLAH produce GLU; GLNS, GLUCYS, VEGLU, PHGDH consume)
     dxdt[61] = VGLNS - VGMPS - VEGLN  # GLN
-    dxdt[62] = VADA + VAMPD1 + VCSE + VGLNS - VGDH - VENH4  # NH4
+    dxdt[62] = VADA + VAMPD1 + VCSE + VGDA - VGLNS - VGDH - VENH4  # NH4 (GLNS consumes NH4; VGDA: guanine deaminase produces NH4)
     dxdt[63] = VGGT - VGGCT  # GLUAA
     dxdt[64] = VGGCT - VGGT  # AA
-    dxdt[65] = VGGCT  # OXOP
-    dxdt[66] = VCYSGLY + VGSS  # GLY
+    dxdt[65] = VGGCT - VOPLAH  # OXOP (GGCT produces; OPLAH consumes — closes gamma-glutamyl cycle)
+    dxdt[66] = VCYSGLY - VGSS + VSHMT  # GLY (SHMT produces GLY; GSS consumes GLY)
     dxdt[67] = VCYSGLY + VCSE - VGLUCYS - VECYS  # CYS
     dxdt[68] = VGGT - VCYSGLY  # CYSGLY
     dxdt[69] = VGLUCYS - VGSS  # GLUCYS
     dxdt[70] = 2*VGSR + VGSS - 2*VGPX - VGGT  # GSH
     dxdt[71] = VGPX - VGSR  # GSSG
-    dxdt[72] = Vpolyam  # ORN
-    dxdt[73] = Vpolyam - VEUREA  # UREA
-    dxdt[74] = -VACLY  # ACCOA
+    dxdt[72] = 0.0  # ORN (RBC-strict: Vpolyam removed)
+    dxdt[73] = -VEUREA  # UREA (RBC-strict: no intracellular production)
+    dxdt[74] = 0.0  # ACCOA (RBC-strict: VACLY removed)
     
     # Redox and cofactor metabolites (75-84)
-    dxdt[75] = VGAPDH + VMLD + VIMPH - VG6PDH - V6PGD - VLDH  # NAD
-    dxdt[76] = VG6PDH + V6PGD + VLDH - VGAPDH - VMLD - VIMPH  # NADH
-    dxdt[77] = VME + VGDH + VGSR - VG6PDH - V6PGD  # NADP
-    dxdt[78] = VG6PDH + V6PGD - VME - VGDH - VGSR  # NADPH
+    dxdt[75] = VLDH - VGAPDH - VMLD - VIMPH - VPHGDH  # NAD (produced by LDH; consumed by GAPDH, MLD, IMPH, PHGDH)
+    dxdt[76] = VGAPDH + VMLD + VIMPH + VPHGDH - VLDH  # NADH (produced by GAPDH, MLD, IMPH, PHGDH; consumed by LDH)
+    dxdt[77] = VGDH + VGSR - VG6PDH - V6PGD - VME  # NADP (RBC-strict: VACO removed)
+    dxdt[78] = VG6PDH + V6PGD + VME - VGDH - VGSR  # NADPH (RBC-strict: VACO removed)
     dxdt[79] = VXAO - VH2O2 - VGPX  # H2O2 (first instance)
     dxdt[80] = VH2O2  # O2
-    dxdt[81] = VADSL + VASL - VFUM - VEFUM  # FUM
+    dxdt[81] = VADSL - VFUM - VEFUM  # FUM (RBC-strict: VASL removed)
     dxdt[82] = -VRKa  # RIB
-    dxdt[83] = VASTA  # SUCARG
-    dxdt[84] = -VSAH - VECYT  # CYT
+    dxdt[83] = 0.0  # SUCARG (RBC-strict: VASTA removed)
+    dxdt[84] = 0.0  # CYT (RBC-strict: NO intracellular producer — cytidine supplied by storage medium, held constant)
     
     # Extracellular metabolites (85-105)
     dxdt[85] = -VEGLC  # EGLC (consumption - negative flux)
-    dxdt[86] = -VENH4  # ENH4
+    dxdt[86] = VENH4   # ENH4 (bidirectional: gains when NH4 > ENH4)
     dxdt[87] = VELAC   # ELAC
-    dxdt[88] = -VEADO  # EADO
+    dxdt[88] = VEADO   # EADO (bidirectional: gains when ADO > EADO)
     dxdt[89] = VEADE   # EADE (adenine efflux - positive production)
     dxdt[90] = VEINO   # EINO (inosine efflux - positive production)
     dxdt[91] = VEGLN   # EGLN (glutamine efflux - positive production)
     dxdt[92] = VEGLU   # EGLU (glutamate efflux - positive production)
     dxdt[93] = VECYS   # ECYS (cysteine efflux - positive production)
-    dxdt[94] = -VEMET  # EMET
-    dxdt[95] = -VEASP  # EASP
-    dxdt[96] = -VEUREA # EUREA
-    dxdt[97] = -VEURT  # EURT
-    dxdt[98] = -VEPYR  # EPYR
-    dxdt[99] = -VEXAN  # EXAN
+    dxdt[94] = VEMET   # EMET (bidirectional: gains when MET > EMET)
+    dxdt[95] = VEASP   # EASP (bidirectional: gains when ASP > EASP)
+    dxdt[96] = VEUREA  # EUREA (bidirectional: gains when UREA > EUREA)
+    dxdt[97] = VEURT   # EURT (bidirectional: gains when URT > EURT)
+    dxdt[98] = VEPYR   # EPYR (bidirectional: gains when PYR > EPYR)
+    dxdt[99] = VEXAN   # EXAN (bidirectional: gains when XAN > EXAN)
     dxdt[100] = VEHYPX  # EHYPX (hypoxanthine efflux - positive production)
     dxdt[101] = VEMAL   # EMAL (malate efflux - positive production)
-    dxdt[102] = -VEFUM  # EFUM
-    dxdt[103] = -VECIT  # ECIT
-    dxdt[104] = -VEALA  # EALA
-    dxdt[105] = -VECYT  # ECYT
+    dxdt[102] = VEFUM   # EFUM (bidirectional: gains when FUM > EFUM)
+    dxdt[103] = VECIT   # ECIT (bidirectional: gains when CIT > ECIT)
+    dxdt[104] = VEALA   # EALA (bidirectional: gains when ALA > EALA)
+    dxdt[105] = VECYT   # ECYT (bidirectional: gains when CYT > ECYT)
     
     # ===== DYNAMIC pH REGULATION =====
     # pHi (intracellular pH) - index 106
@@ -1202,7 +1244,7 @@ def equadiff_brodbar(t: float,
     
     # Step 2: Eliminate ODEs for algebraically determined metabolites
     # AMP is determined by adenylate pool conservation: AMP = A_total - ATP - ADP
-    dxdt[37] = 0.0  # AMP ODE eliminated (always enforced)
+    # dxdt[37] = 0.0  # AMP ODE eliminated — NOW DYNAMIC (Fix C: AMP has proper ODE above)
     
     # Step 3: Apply bounds constraints to prevent negative concentrations (safety net) - DISABLED
     # try:
@@ -1321,14 +1363,27 @@ def equadiff_brodbar(t: float,
             # Don't let curve fitting errors crash the simulation
             print(f"Warning: Curve fitting error at t={t:.2f}: {e}")
     
-    # Step 5: Final numerical stability check (essential for integration)
+    # Step 5: Non-negativity enforcement via derivative damping
+    # When a concentration is near zero and its derivative is negative,
+    # smoothly attenuate the derivative to prevent the solver from overshooting below zero.
+    # Uses linear damping: factor = x[i] / threshold (0 at x=0, 1 at threshold).
+    # Only applies to base metabolite concentrations (0–105), not pH indices.
+    n_conc = min(NUM_BASE_METABOLITES, len(dxdt))
+    conc = x[:n_conc]
+    mask = (conc < NONEG_THRESHOLD) & (dxdt[:n_conc] < 0)
+    if np.any(mask):
+        damping = np.ones(n_conc)
+        damping[mask] = conc[mask] / NONEG_THRESHOLD
+        dxdt[:n_conc] *= damping
+    
+    # Step 6: Final numerical stability check (essential for integration)
     # Ensure all derivatives are finite and reasonable
     dxdt = np.nan_to_num(dxdt, nan=0.0, posinf=1e6, neginf=-1e6)
     
     # Clip extreme derivatives to prevent numerical instability
     dxdt = np.clip(dxdt, -MAX_DERIVATIVE, MAX_DERIVATIVE)
     
-    # Step 6: Track fluxes if enabled
+    # Step 7: Track fluxes if enabled
     if _flux is not None:
         flux_dict = {
             # Glycolysis
@@ -1348,18 +1403,18 @@ def equadiff_brodbar(t: float,
             'VGMPS': VGMPS, 'VADSS': VADSS, 'VADSL': VADSL,
             'VPNPase1': VPNPase1, 'VXAO2': VXAO2, 'Vnucleo2': Vnucleo2,
             'VRKa': VRKa, 'VRKb': VRKb, 'VPRPPASe': VPRPPASe,
-            'VOPRIBT': VOPRIBT,
+            'VOPRIBT': VOPRIBT, 'VNDPK': VNDPK, 'Vnucleo_GMP': Vnucleo_GMP, 'VGDA': VGDA,
             # Amino acid metabolism
             'VGDH': VGDH, 'VGLNS': VGLNS, 'VGLUCYS': VGLUCYS,
             'VGSS': VGSS, 'VGSR': VGSR, 'VGGT': VGGT, 'VGGCT': VGGCT,
-            'VMESE': VMESE, 'VSAM': VSAM, 'VSAH': VSAH, 'VAHCY': VAHCY,
-            'VCBS': VCBS, 'VCSE': VCSE, 'VASPTA': VASPTA, 'VALATA': VALATA,
-            'VGENASP': VGENASP, 'VFUM': VFUM, 'VMLD': VMLD,
+            'VMESE': VMESE, 'VSAM': VSAM, 'VSAH': VSAH, 'VAHCY': VAHCY, 'VSHMT': VSHMT,
+            'VCBS': VCBS, 'VCSE': VCSE, 'VASPTA': VASPTA, 'VALATA': VALATA, 'VPHGDH': VPHGDH, 'VOPLAH': VOPLAH,
+            'VGENASP': VGENASP, 'VPEP_PASE': VPEP_PASE, 'VGMPK': VGMPK, 'VFUM': VFUM, 'VMLD': VMLD,
             'VASL': VASL, 'VASS': VASS, 'Vpolyam': Vpolyam,
             'VASTA': VASTA, 'VCYSGLY': VCYSGLY,
             # Other
             'VH2O2': VH2O2, 'VGPX': VGPX, 'VME': VME, 'VPC': VPC,
-            'VACLY': VACLY,
+            'VACLY': VACLY, 'VACO': VACO,
             # Transport
             'VEGLC': VEGLC, 'VELAC': VELAC, 'VEPYR': VEPYR,
             'VEGLN': VEGLN, 'VEGLU': VEGLU, 'VECYS': VECYS,
@@ -1371,7 +1426,7 @@ def equadiff_brodbar(t: float,
         }
         _flux.add_timepoint(t, flux_dict)
     
-    # Step 7: Track Bohr effect if enabled
+    # Step 8: Track Bohr effect if enabled
     if _bohr_eff is not None and _bohr_trk is not None:
         # Extract current pHi, pHe, and 2,3-BPG concentration
         current_pHi = x[PHI_INDEX] if len(x) > PHI_INDEX else PHYSIOLOGICAL_PH

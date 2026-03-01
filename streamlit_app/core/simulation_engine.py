@@ -36,7 +36,8 @@ class SimpleFluxTracker:
 
 # Import existing modules
 try:
-    from equadiff_brodbar import equadiff_brodbar, BRODBAR_METABOLITE_MAP
+    from equadiff_brodbar import (equadiff_brodbar, BRODBAR_METABOLITE_MAP,
+                                  _load_experimental_first_values)
     from curve_fit import curve_fit_ja
     from parse_initial_conditions import parse_initial_conditions
     from ph_perturbation import (PhPerturbation, create_step_perturbation,
@@ -79,7 +80,7 @@ class SimulationEngine:
         
     def run_simulation(self, 
                       t_max=42, 
-                      curve_fit_strength=1.0,
+                      curve_fit_strength=0.0,
                       ic_source="JA Final",
                       solver_method="RK45",
                       rtol=1e-6,
@@ -123,6 +124,22 @@ class SimulationEngine:
         try:
             self.status = "running"
             start_time = time.time()
+            
+            # Auto-load calibrated parameters if none provided
+            if custom_params is None:
+                cal_path = project_root / "Simulations" / "brodbar" / "calibration" / "best_params.json"
+                if cal_path.exists():
+                    import json
+                    with open(cal_path, 'r') as f:
+                        custom_params = json.load(f)
+                    if progress_callback:
+                        progress_callback(0.05, f"Auto-loaded {len(custom_params)} calibrated MM parameters")
+            
+            # Load experimental first values for conservation pools (same as main.py)
+            try:
+                _load_experimental_first_values()
+            except Exception:
+                pass  # Non-critical, model will use defaults
             
             # Update progress
             if progress_callback:
@@ -278,9 +295,9 @@ class SimulationEngine:
             if progress_callback:
                 progress_callback(0.35, f"Starting integration ({n_metabolites} metabolites)...")
             
-            # Time span
-            t_span = (0, t_max)
-            t_eval = np.linspace(0, t_max, 75)  # 75 time points
+            # Time span — start at t=1 to match experimental data (same as main.py)
+            t_span = (1, t_max)
+            t_eval = np.linspace(1, t_max, 75)  # 75 time points
             
             # Create ODE function wrapper with curve fitting strength
             # Verify curve_fitting_data availability
@@ -305,6 +322,13 @@ class SimulationEngine:
             if progress_callback:
                 progress_callback(0.4, f"Integrating with {solver_method} solver...")
             
+            # Limit max step size to prevent overshooting concentrations below zero.
+            # Tighter steps for low curve fit (pure MM kinetics are stiffer).
+            if curve_fit_strength < 0.3:
+                max_step = t_max / 500  # ~0.084 days for 42-day sim
+            else:
+                max_step = t_max / 150  # ~0.28 days
+            
             # Solve ODE system
             sol = solve_ivp(
                 ode_func,
@@ -314,11 +338,16 @@ class SimulationEngine:
                 t_eval=t_eval,
                 rtol=rtol,
                 atol=atol,
+                max_step=max_step,
                 dense_output=True
             )
             
             if not sol.success:
                 raise RuntimeError(f"Integration failed: {sol.message}")
+            
+            # Post-processing: clamp any residual negative concentrations to zero
+            # (derivative damping in equadiff_brodbar prevents most, this catches stragglers)
+            sol.y[:106] = np.maximum(sol.y[:106], 0.0)
             
             if progress_callback:
                 progress_callback(0.8, "Processing results...")

@@ -41,7 +41,6 @@ from parse import parse
 from parse_initial_conditions import parse_initial_conditions
 from solver import solver
 from visualization import plot_metabolite_results, export_to_pdf
-from model import load_model
 from flux_visualization import FluxTracker, generate_all_flux_plots, create_flux_pdf_report
 
 # Import pH perturbation modules
@@ -63,13 +62,7 @@ except ImportError:
     print("Warning: equadiff_brodbar module not found. Brodbar model will not be available.")
     BRODBAR_AVAILABLE = False
 
-# Import the refactored model
-try:
-    from rbc_equadiff_refactor import RBCEq, CoreParams, default_ic
-    REFACTORED_AVAILABLE = True
-except ImportError:
-    print("Warning: rbc_equadiff_refactor module not found. Refactored model will not be available.")
-    REFACTORED_AVAILABLE = False
+REFACTORED_AVAILABLE = False
 
 
 def main():
@@ -130,6 +123,8 @@ def main():
                         help='Author name to include in PDF output')
     parser.add_argument('--curve-fit', type=float, default=0.0, metavar='STRENGTH',
                         help='Curve fitting strength: 0.0=pure MM kinetics (default), 0.5=50%% blend, 1.0=full curve fitting')
+    parser.add_argument('--load-params', type=str, default=None,
+                        help='Path to JSON file with calibrated parameters (e.g. Simulations/brodbar/calibration/best_params.json)')
     
     # pH perturbation arguments
     parser.add_argument('--ph-perturbation', type=str, choices=['none', 'acidosis', 'alkalosis', 'step', 'ramp'], 
@@ -148,6 +143,21 @@ def main():
     model_type = args.model
     author_name = args.author
     curve_fit_strength = args.curve_fit
+    
+    # Load calibrated parameters
+    # Auto-load best_params.json for brodbar model unless --load-params explicitly set
+    import json
+    custom_params = None
+    _default_cal_path = Path("Simulations/brodbar/calibration/best_params.json")
+    if args.load_params:
+        with open(args.load_params, 'r') as f:
+            custom_params = json.load(f)
+        print(f"Loaded {len(custom_params)} calibrated parameters from {args.load_params}")
+    elif model_type == 'brodbar' and _default_cal_path.exists():
+        with open(_default_cal_path, 'r') as f:
+            custom_params = json.load(f)
+        print(f"Auto-loaded {len(custom_params)} calibrated parameters from {_default_cal_path}")
+        print(f"  (use --load-params to override, or delete the file to use defaults)")
     
     # Validate curve fitting strength
     if curve_fit_strength < 0.0 or curve_fit_strength > 2.0:
@@ -408,17 +418,25 @@ def main():
                     bohr_tracker = None
             
             # Use default RK45 solver with standard settings
-            print("Integrating with RK45 solver...")
+            # Tighter max_step for low curve fit to prevent negative concentrations
+            t_max_sim = time_range[1] - time_range[0]
+            max_step = t_max_sim / 500 if curve_fit_strength < 0.3 else t_max_sim / 150
+            print(f"Integrating with RK45 solver (max_step={max_step:.4f})...")
             
             solution = solve_ivp(
                 lambda t, y: equadiff_brodbar(t, y, thermo_constraints=None, 
-                                              custom_params=None, 
+                                              custom_params=custom_params, 
                                               curve_fit_strength=curve_fit_strength),
                 t_span=time_range,
                 y0=x0,
                 method='RK45',
-                t_eval=np.linspace(time_range[0], time_range[1], 75)
+                t_eval=np.linspace(time_range[0], time_range[1], 75),
+                max_step=max_step
             )
+            
+            # Post-processing: clamp residual negative concentrations
+            if solution.success:
+                solution.y[:106] = np.maximum(solution.y[:106], 0.0)
             
             # Disable flux tracking, Bohr tracking, and pH modulation
             disable_flux_tracking()
@@ -553,14 +571,7 @@ def main():
             print(f"  Tracked: P50, O2 saturation (arterial/venous), O2 delivery")
             print(f"  Time points: {len(df_bohr)}")
             
-            # Generate Bohr effect plots
-            try:
-                from bohr_visualization import create_bohr_plots
-                create_bohr_plots(bohr_csv_path, bohr_dir, scenario=args.ph_perturbation)
-                print(f"✓ Bohr effect plots generated in {bohr_dir}")
-            except Exception as e:
-                print(f"⚠ Bohr visualization failed: {e}")
-                print("  (Bohr data saved, but plots not generated)")
+            print(f"  (Bohr visualization available in Streamlit app)")
         except Exception as e:
             print(f"Warning: Bohr effect data processing failed: {e}")
     

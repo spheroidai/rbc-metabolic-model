@@ -78,8 +78,8 @@ with st.sidebar:
         "Fitting Strength (%)",
         min_value=0,
         max_value=100,
-        value=100,
-        help="0% = Pure Michaelis-Menten kinetics\n100% = Blend with experimental curves"
+        value=0,
+        help="0% = Pure Michaelis-Menten kinetics with calibrated parameters (recommended)\n100% = Blend with experimental curves"
     )
     
     st.info(f"""

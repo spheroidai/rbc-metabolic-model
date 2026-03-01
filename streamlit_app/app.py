@@ -3,7 +3,7 @@ RBC Metabolic Model - Streamlit Web Application
 Main Entry Point
 
 Author: Jorgelindo da Veiga
-Based on: Bordbar et al. (2015) RBC metabolic model
+Based on: Bordbar et al. (2015) Experimental Data
 """
 
 import streamlit as st
