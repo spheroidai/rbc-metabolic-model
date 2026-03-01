@@ -23,6 +23,10 @@ ENV/
 
 # Data and output files
 Simulations/
+!Simulations/brodbar/
+!Simulations/brodbar/calibration/
+!Simulations/brodbar/calibration/best_params.json
+!Simulations/brodbar/calibration/calibration_report.json
 *.png
 *.pdf
 # *.csv  # Commented out - we need fitted_params.csv for the app
