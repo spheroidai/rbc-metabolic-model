@@ -149,13 +149,20 @@ def main():
     import json
     custom_params = None
     _default_cal_path = Path("Simulations/brodbar/calibration/best_params.json")
+    def _load_json_params(path):
+        """Load JSON params, handling UTF-16 or UTF-8 encoding."""
+        try:
+            with open(path, 'r', encoding='utf-8-sig') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            with open(path, 'r', encoding='utf-16') as f:
+                return json.load(f)
+
     if args.load_params:
-        with open(args.load_params, 'r') as f:
-            custom_params = json.load(f)
+        custom_params = _load_json_params(args.load_params)
         print(f"Loaded {len(custom_params)} calibrated parameters from {args.load_params}")
     elif model_type == 'brodbar' and _default_cal_path.exists():
-        with open(_default_cal_path, 'r') as f:
-            custom_params = json.load(f)
+        custom_params = _load_json_params(_default_cal_path)
         print(f"Auto-loaded {len(custom_params)} calibrated parameters from {_default_cal_path}")
         print(f"  (use --load-params to override, or delete the file to use defaults)")
     

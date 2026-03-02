@@ -132,8 +132,12 @@ class SimulationEngine:
                 cal_path = project_root / "Simulations" / "brodbar" / "calibration" / "best_params.json"
                 if cal_path.exists():
                     import json
-                    with open(cal_path, 'r') as f:
-                        custom_params = json.load(f)
+                    try:
+                        with open(cal_path, 'r', encoding='utf-8-sig') as f:
+                            custom_params = json.load(f)
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        with open(cal_path, 'r', encoding='utf-16') as f:
+                            custom_params = json.load(f)
                     if progress_callback:
                         progress_callback(0.05, f"Auto-loaded {len(custom_params)} calibrated MM parameters")
             
