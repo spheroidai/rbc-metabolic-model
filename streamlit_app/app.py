@@ -99,7 +99,7 @@ with col2:
         </p>
         <p style="color: #4B5563; margin-bottom: 0;"><strong>Explore complex metabolic dynamics with:</strong></p>
         <ul style="color: #4B5563; margin-top: 0.5rem;">
-            <li>108 metabolites across multiple pathways</li>
+            <li>115 metabolites across multiple pathways</li>
             <li>Real-time simulation with adjustable parameters</li>
             <li>Interactive visualizations and data export</li>
             <li>Bohr effect and pH perturbation analysis</li>
@@ -160,7 +160,7 @@ col1, col2, col3, col4 = st.columns(4, gap="medium")
 with col1:
     st.markdown("""
     <div class="metric-card">
-        <div class="value">108</div>
+        <div class="value">115</div>
         <div class="label">Metabolites</div>
     </div>
     """, unsafe_allow_html=True)

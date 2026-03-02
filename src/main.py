@@ -9,7 +9,7 @@ Features:
 - Multi-model support (brodbar, original, refactored variants)
 - Experimental data integration from Excel files
 - Pure Michaelis-Menten kinetic modeling
-- 107 metabolites (106 base + pHi dynamics)
+- 114 metabolites (113 base + pHi dynamics)
 - Comprehensive visualization and PDF export
 - Command-line interface for easy configuration
 
@@ -87,7 +87,7 @@ def main():
     
     Model Details:
     --------------
-    - Simulates 107 metabolites (106 base metabolites + pHi)
+    - Simulates 114 metabolites (113 base metabolites + pHi)
     - Integration time: t=1 to t=42 hours (RBC storage conditions)
     - Uses experimental data from Data_Bordbar_et_al_exp.xlsx
     - Implements pure Michaelis-Menten kinetics
@@ -278,14 +278,16 @@ def main():
             return
     else:
         # Brodbar model: create metabolite list from BRODBAR_METABOLITE_MAP
-        from equadiff_brodbar import BRODBAR_METABOLITE_MAP
+        from equadiff_brodbar import (BRODBAR_METABOLITE_MAP, NUM_BASE_METABOLITES, 
+                                         NUM_TOTAL_METABOLITES, PHI_INDEX, PHE_INDEX, H2O2_INDEX)
         
         # Invert the map to get metabolite names ordered by index
-        # Create list for 107 metabolites (106 base + pHi)
+        # Create list for NUM_BASE_METABOLITES + 1 metabolites (base + pHi)
         # pHe will be added dynamically if present in x after integration
-        metabolite_list = [''] * 107  # 106 base metabolites + pHi
+        n_with_phi = NUM_BASE_METABOLITES + 1  # base metabolites + pHi
+        metabolite_list = [''] * n_with_phi
         for name, idx in BRODBAR_METABOLITE_MAP.items():
-            if idx < 107:
+            if idx < n_with_phi:
                 metabolite_list[idx] = name
         
         model = {'metab': metabolite_list}
@@ -306,10 +308,12 @@ def main():
         print("Warning: Could not parse initial conditions from file. Using defaults...")
         # Create default initial conditions for the model
         if model_type == 'brodbar':
-            x0 = np.ones(107)  # Default to 1 for all metabolites (106 base + pHi)
-            x0[79] = 0.0001  # H2O2
-            x0[106] = 7.2    # pHi
-            x0_names = [f"x{i}" for i in range(107)]
+            from equadiff_brodbar import (NUM_BASE_METABOLITES, PHI_INDEX, H2O2_INDEX)
+            n_with_phi = NUM_BASE_METABOLITES + 1
+            x0 = np.ones(n_with_phi)  # Default to 1 for all metabolites (base + pHi)
+            x0[H2O2_INDEX] = 0.0001  # H2O2
+            x0[PHI_INDEX] = 7.2    # pHi
+            x0_names = [f"x{i}" for i in range(n_with_phi)]
         elif model_type == 'refactored':
             # Will use default_ic() later
             pass
@@ -332,15 +336,16 @@ def main():
     if len(x0) > 36:
         print(f"  LAC (x[36]): {x0[36]:.3f} mM")
     
-    # For Brodbar model, ensure we have exactly 107 metabolites (106 base + pHi)
-    # Note: H2O2 is part of the base 106 metabolites at index 79
+    # For Brodbar model, ensure we have exactly NUM_BASE_METABOLITES+1 metabolites (base + pHi)
     if model_type == 'brodbar':
-        if len(x0) < 107:
-            print(f"Extending initial conditions from {len(x0)} to 107 metabolites...")
-            x0_extended = np.ones(107)
+        from equadiff_brodbar import (NUM_BASE_METABOLITES, PHI_INDEX, PHE_INDEX, H2O2_INDEX)
+        n_with_phi = NUM_BASE_METABOLITES + 1
+        if len(x0) < n_with_phi:
+            print(f"Extending initial conditions from {len(x0)} to {n_with_phi} metabolites...")
+            x0_extended = np.ones(n_with_phi)
             x0_extended[:len(x0)] = x0
-            x0_extended[79] = 0.0001  # H2O2 (if not already set)
-            x0_extended[106] = 7.2    # pHi
+            x0_extended[H2O2_INDEX] = 0.0001  # H2O2 (if not already set)
+            x0_extended[PHI_INDEX] = 7.2    # pHi
             x0 = x0_extended
     elif model_type != 'refactored':
         # For original model, add extra metabolites
@@ -357,8 +362,9 @@ def main():
     print(f"Solving system of {len(model['metab'])} differential equations...")
     try:
         if model_type == 'brodbar':
-            num_metabolites = 108 if ph_perturbation else 107
-            print(f"Using full Brodbar model equations ({num_metabolites} metabolites: 106 base + pHi{' + pHe' if ph_perturbation else ''})")
+            from equadiff_brodbar import (NUM_BASE_METABOLITES, NUM_TOTAL_METABOLITES, PHI_INDEX, PHE_INDEX, H2O2_INDEX)
+            num_metabolites = NUM_TOTAL_METABOLITES if ph_perturbation else (NUM_BASE_METABOLITES + 1)
+            print(f"Using full Brodbar model equations ({num_metabolites} metabolites: {NUM_BASE_METABOLITES} base + pHi{' + pHe' if ph_perturbation else ''})")
             # Use equadiff_brodbar directly with solve_ivp
             from scipy.integrate import solve_ivp
             from equadiff_brodbar import (equadiff_brodbar, BRODBAR_METABOLITE_MAP, 
@@ -370,17 +376,17 @@ def main():
             print("Loading experimental data for conservation pools...")
             _load_experimental_first_values()
             
-            # Ensure x0 has correct number of metabolites (107 or 108 with pH perturbation)
+            # Ensure x0 has correct number of metabolites
             target_size = num_metabolites
             if len(x0) != target_size:
                 print(f"Adjusting initial conditions from {len(x0)} to {target_size} metabolites")
                 if len(x0) < target_size:
                     x0_extended = np.ones(target_size)
                     x0_extended[:len(x0)] = x0
-                    x0_extended[79] = max(x0_extended[79], 0.0001)  # Ensure H2O2 is set
-                    x0_extended[106] = 7.2  # pHi initial
-                    if target_size == 108:
-                        x0_extended[107] = 7.4  # pHe initial (will be overridden by perturbation)
+                    x0_extended[H2O2_INDEX] = max(x0_extended[H2O2_INDEX], 0.0001)  # Ensure H2O2 is set
+                    x0_extended[PHI_INDEX] = 7.2  # pHi initial
+                    if target_size == NUM_TOTAL_METABOLITES:
+                        x0_extended[PHE_INDEX] = 7.4  # pHe initial (will be overridden by perturbation)
                     x0 = x0_extended
                 else:
                     x0 = x0[:target_size]
@@ -436,7 +442,7 @@ def main():
             
             # Post-processing: clamp residual negative concentrations
             if solution.success:
-                solution.y[:106] = np.maximum(solution.y[:106], 0.0)
+                solution.y[:NUM_BASE_METABOLITES] = np.maximum(solution.y[:NUM_BASE_METABOLITES], 0.0)
             
             # Disable flux tracking, Bohr tracking, and pH modulation
             disable_flux_tracking()
@@ -494,14 +500,14 @@ def main():
     Path(fluxes_dir).mkdir(parents=True, exist_ok=True)
     
     # Save metabolite concentrations including pH values
-    if model_type == 'brodbar' and x.shape[1] >= 107:
+    if model_type == 'brodbar' and x.shape[1] > PHI_INDEX:
         import pandas as pd
         metabolite_data = {'Time (hours)': t}
         
-        # Add pHi (index 106) and pHe (index 107) if available
-        metabolite_data['pHi'] = x[:, 106]
-        if x.shape[1] >= 108:
-            metabolite_data['pHe'] = x[:, 107]
+        # Add pHi and pHe if available
+        metabolite_data['pHi'] = x[:, PHI_INDEX]
+        if x.shape[1] > PHE_INDEX:
+            metabolite_data['pHe'] = x[:, PHE_INDEX]
         else:
             metabolite_data['pHe'] = 7.4  # Constant if not tracked
         
@@ -518,12 +524,12 @@ def main():
             actual_metabolites = x.shape[1]
             if len(model['metab']) != actual_metabolites:
                 print(f"Adjusting model['metab'] from {len(model['metab'])} to {actual_metabolites} metabolites")
-                if actual_metabolites == 108 and len(model['metab']) == 107:
+                if actual_metabolites == len(model['metab']) + 1:
                     # Add pHe if it's in x but not in model['metab']
                     model['metab'].append('PHE')
-                elif actual_metabolites == 107 and len(model['metab']) == 108:
+                elif actual_metabolites == len(model['metab']) - 1:
                     # Remove pHe if it's in model['metab'] but not in x
-                    model['metab'] = model['metab'][:107]
+                    model['metab'] = model['metab'][:actual_metabolites]
         
         # NOTE: Reordering disabled to prevent duplicate metabolite plotting
         # The x array is already in the correct order (model['metab'] order)

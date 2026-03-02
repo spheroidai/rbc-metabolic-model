@@ -255,7 +255,7 @@ with col2:
     **Upon completion, you will receive:**
     
     ✅ **Metabolite Dynamics**
-    - 107 metabolite concentrations over time
+    - 114 metabolite concentrations over time
     - Interactive plots
     
     ✅ **Flux Analysis**
@@ -295,7 +295,7 @@ with tab1:
     from **Bordbar et al. (2015)**.
     
     **Key Features:**
-    - **107 metabolites** including intracellular and extracellular species
+    - **114 metabolites** including intracellular and extracellular species
     - **Multiple pathways:** Glycolysis, Pentose Phosphate Pathway, Nucleotide metabolism, etc.
     - **Experimental validation:** Fitted to time-series metabolomics data
     - **pH dynamics:** Includes intracellular pH modeling

@@ -12,6 +12,8 @@ _THIS_FILE = Path(__file__).resolve()
 _SRC_DIR = _THIS_FILE.parent  # This file is in src/
 _DATA_FILE = _SRC_DIR / "Data_Bordbar_et_al_exp.xlsx"
 
+from equadiff_brodbar import NUM_BASE_METABOLITES, H2O2_INDEX, PHI_INDEX
+
 
 def parse_initial_conditions(model, file_path):
     """
@@ -50,11 +52,12 @@ def parse_initial_conditions(model, file_path):
         
     except Exception as e:
         print(f"ERROR loading experimental data: {e}")
-        # Fallback to default values (107 metabolites: 106 base + pHi)
-        x0 = np.ones(107)
-        x0[79] = 0.0001  # H2O2 at index 79
-        x0[106] = 7.2    # pHi at index 106
-        x0_names = [f"x{i}" for i in range(107)]
+        # Fallback to default values (base metabolites + pHi)
+        n_with_phi = NUM_BASE_METABOLITES + 1
+        x0 = np.ones(n_with_phi)
+        x0[H2O2_INDEX] = 0.0001  # H2O2
+        x0[PHI_INDEX] = 7.2      # pHi
+        x0_names = [f"x{i}" for i in range(n_with_phi)]
         return x0, x0_names
     
     # Use model metabolite order if available
@@ -63,7 +66,7 @@ def parse_initial_conditions(model, file_path):
         print(f"Using model with {len(model_metabolites)} metabolites")
     else:
         print("No model provided, using default metabolite order")
-        model_metabolites = [f"x{i}" for i in range(106)]
+        model_metabolites = [f"x{i}" for i in range(NUM_BASE_METABOLITES)]
     
     # Create initial conditions vector matching model order
     x0 = np.ones(len(model_metabolites))  # Default to 1.0
@@ -99,11 +102,10 @@ def parse_initial_conditions(model, file_path):
     
     print(f"Successfully mapped {mapped_count} experimental values to model positions")
     
-    # Ensure we have exactly 107 metabolites for Brodbar model (106 base + pHi)
-    # Note: H2O2 is part of the base 106 metabolites at index 79
-    expected_size = 107
+    # Ensure we have enough metabolites for Brodbar model (base + pHi)
+    expected_size = NUM_BASE_METABOLITES + 1
     if len(x0) < expected_size:
-        print(f"Extending from {len(x0)} to {expected_size} metabolites (106 base + pHi)")
+        print(f"Extending from {len(x0)} to {expected_size} metabolites ({NUM_BASE_METABOLITES} base + pHi)")
         x0_extended = np.ones(expected_size)
         x0_extended[:len(x0)] = x0
         x0 = x0_extended
@@ -114,8 +116,8 @@ def parse_initial_conditions(model, file_path):
         x0_names = x0_names_extended
     
     # Set special metabolites
-    x0[79] = max(x0[79], 0.0001)   # H2O2 at index 79 (part of base metabolites)
-    x0[106] = 7.2                   # pHi at index 106 (dynamic metabolite)
+    x0[H2O2_INDEX] = max(x0[H2O2_INDEX], 0.0001)  # H2O2 (part of base metabolites)
+    x0[PHI_INDEX] = 7.2                             # pHi (dynamic metabolite)
     
     # Clean the vector
     x0 = np.nan_to_num(x0, nan=0.001, posinf=1.0, neginf=0.001)

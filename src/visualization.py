@@ -211,20 +211,19 @@ def plot_ph_results(t, x, save_path="html"):
     print(f"{'='*60}")
     
     # Extract dynamic pH values from simulation results
-    # pHi is x[:, 106] (PHI_INDEX = 106)
-    # pHe is x[:, 107] (PHE_INDEX = 107) - DYNAMIC with perturbations!
-    if x.shape[1] >= 108:
-        # Both pHi and pHe are tracked (108 metabolites total)
-        pH_intra = x[:, 106]  # pHi (intracellular)
-        pH_extra = x[:, 107]  # pHe (extracellular) - DYNAMIC!
-        print(f"✓ Using 108 metabolites (pHi + pHe tracked)")
+    from equadiff_brodbar import PHI_INDEX, PHE_INDEX, NUM_TOTAL_METABOLITES
+    if x.shape[1] > PHE_INDEX:
+        # Both pHi and pHe are tracked
+        pH_intra = x[:, PHI_INDEX]  # pHi (intracellular)
+        pH_extra = x[:, PHE_INDEX]  # pHe (extracellular) - DYNAMIC!
+        print(f"✓ Using {x.shape[1]} metabolites (pHi + pHe tracked)")
         print(f"  pHi range: {np.min(pH_intra):.3f} - {np.max(pH_intra):.3f}")
         print(f"  pHe range: {np.min(pH_extra):.3f} - {np.max(pH_extra):.3f}")
         print(f"  pHi[0]={pH_intra[0]:.3f}, pHi[-1]={pH_intra[-1]:.3f}")
         print(f"  pHe[0]={pH_extra[0]:.3f}, pHe[-1]={pH_extra[-1]:.3f}")
-    elif x.shape[1] >= 107:
-        # Only pHi tracked (107 metabolites)
-        pH_intra = x[:, 106]
+    elif x.shape[1] > PHI_INDEX:
+        # Only pHi tracked
+        pH_intra = x[:, PHI_INDEX]
         pH_extra = 7.4 * np.ones_like(t)  # Fallback to constant
     else:
         # Old model without pH tracking

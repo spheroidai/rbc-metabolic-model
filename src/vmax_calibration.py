@@ -31,7 +31,7 @@ from scipy.integrate import solve_ivp
 # Ensure src is on the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from equadiff_brodbar import equadiff_brodbar, BRODBAR_METABOLITE_MAP
+from equadiff_brodbar import equadiff_brodbar, BRODBAR_METABOLITE_MAP, NUM_BASE_METABOLITES
 from parse_initial_conditions import parse_initial_conditions
 
 # Try to import optuna for Bayesian optimization
@@ -59,7 +59,9 @@ OUT_DIR = Path(__file__).parent.parent / 'Simulations' / 'brodbar' / 'calibratio
 # Only metabolites with BOTH experimental data AND model representation
 EXP_TO_MODEL = {
     'GLC': 0, 'G6P': 1, 'F6P': 2, 'GO6P': 4,
-    'F16BP': 11, 'B13PG': 13, 'P3G': 14, 'B23PG': 15,
+    'F16BP': 11, 'P3G': 14, 'B23PG': 15,
+    # B13PG REMOVED: experimental data is identical to B23PG (duplicated column).
+    # B13PG is a fleeting intermediate (~0.001 mM), not measurable at B23PG levels (3.6 mM).
     'P2G': 16, 'PEP': 17, 'PYR': 18, 'LAC': 19, 'MAL': 20,
     'CIT': 22, 'ADE': 25, 'INO': 27, 'HYPX': 28, 'XAN': 29, 'URT': 30,
     'ATP': 35, 'ADP': 36, 'AMP': 37, 'GMP': 40, 'IMP': 42,
@@ -70,6 +72,9 @@ EXP_TO_MODEL = {
     'EGLN': 91, 'EGLU': 92, 'ECYS': 93,
     'EURT': 97, 'EXAN': 99, 'EHYPX': 100, 'EMAL': 101,
     'EFUM': 102, 'ECIT': 103,
+    # Previously unused experimental metabolites (model expanded to include these)
+    'ASN': 106, 'EOXOP': 107, 'ESER': 108, 'EARG': 109,
+    'EGSSG': 110, 'EGSH': 111, 'EASN': 112,
 }
 
 EXTRACELLULAR_TARGET_METABOLITES = {
@@ -78,17 +83,24 @@ EXTRACELLULAR_TARGET_METABOLITES = {
 
 # Metabolites to weight more heavily in loss (critical for physiology)
 HIGH_WEIGHT_METABOLITES = {
-    'GLC', 'G6P', 'ATP', 'ADP', 'AMP', 'LAC', 'PYR',
-    'B23PG', 'EGLC', 'ELAC', 'GSH', 'GSSG',
+    'GLC', 'G6P', 'LAC', 'PYR',
+    'EGLC', 'ELAC',
 }
 
-# Extra-high weight metabolites that were previously sacrificed by the optimizer
+# Extra-high weight metabolites — energy-focused calibration strategy
+# Energetic metabolites get highest weights to force optimizer to maintain
+# adenylate pool, redox balance, and core glycolytic flux
 CRITICAL_WEIGHT_METABOLITES = {
-    'PEP': 5.0,   # Optimizer was ignoring PEP due to nRMSE cap; force attention
-    'P2G': 3.0,   # Prevent accumulation shifting upstream when VENOPGM is reduced
-    'ATP': 10.0,  # Force optimizer to maintain adenylate pool (was crashing to 0, exp declines 50% over 42d)
-    'ADP': 10.0,  # Adenylate pool conservation — ADP crashes with ATP
-    'AMP': 5.0,   # Adenylate pool conservation — was accumulating to 2.0 (all pool shifted to AMP)
+    'ATP': 15.0,   # Primary energy currency — exp declines 50% over 42d, must track trajectory
+    'ADP': 15.0,   # Adenylate pool — ADP crashes 86% experimentally
+    'AMP': 10.0,   # Adenylate pool — was accumulating (all pool shifted to AMP)
+    'B23PG': 8.0,  # Critical for Bohr effect — dramatic decline 3.58→0.25 mM
+    'GSH': 5.0,    # Antioxidant defense — declines 62% experimentally
+    'GSSG': 5.0,   # Redox pair with GSH — pool declines 41%
+    'PEP': 5.0,    # Optimizer was ignoring PEP due to nRMSE cap
+    'GLC': 3.0,    # Glycolytic input
+    'LAC': 3.0,    # Glycolytic output
+    'P2G': 3.0,    # Prevent accumulation shifting upstream when VENOPGM is reduced
 }
 
 # Cap per-metabolite nRMSE so structural outliers don't dominate the loss.
@@ -189,6 +201,17 @@ PHASE3_PARAMS = {
     'vmax_VEHYPX':  (0.002, 0.01, 3.0),   # HYPX → EHYPX (floor lowered: was 0.1 → overshot sim=1.25 vs exp=0.38. Let optimizer find balance)
     'vmax_VEFUM':   (0.2,   0.001, 5.0),   # FUM ↔ EFUM (EFUM near zero: sim≈0, exp=0.02)
     'vmax_VEMAL':   (0.001, 0.0001, 1.0),  # MAL → EMAL (EMAL 5x under: sim=0.04, exp=0.18)
+    # Glutathione synthesis/degradation (controls GSH+2·GSSG pool decline: 6.07→2.52 over 42d)
+    'vmax_VGSS':    (0.4,   0.01, 3.0),    # Glutathione synthetase (GSH biosynthesis)
+    'vmax_VGGT':    (0.3,   0.01, 3.0),    # Gamma-glutamyltransferase (GSH degradation)
+    # New transport reactions for previously unused experimental metabolites
+    'vmax_VEOXOP':  (0.15,  0.01, 3.0),    # OXOP → EOXOP (exp EOXOP: 0.12→1.21 mM, major accumulation)
+    'vmax_VESER':   (0.15,  0.01, 2.0),    # SER → ESER (exp ESER: 0.08→0.10 mM)
+    'vmax_VEARG':   (0.05,  0.001, 1.0),   # ARG → EARG (exp EARG: 0.002→0.001 mM, tiny)
+    'vmax_VEGSSG':  (0.01,  0.001, 0.5),   # GSSG → EGSSG (exp EGSSG: 0.007→0.0 mM, very small)
+    'vmax_VEGSH':   (0.01,  0.001, 0.5),   # GSH → EGSH (exp EGSH: 0.018→0.0 mM, very small)
+    'vmax_VASNG':   (0.15,  0.01, 2.0),    # Asparaginase: ASN → ASP + NH4 (exp ASN: 0.44→0.22 mM, declining)
+    'vmax_VEASN':   (0.05,  0.001, 1.0),   # ASN → EASN (exp EASN: 0.01→0.04 mM, small accumulation)
 }
 
 PHASE_MAP = {1: PHASE1_PARAMS, 2: PHASE2_PARAMS, 3: PHASE3_PARAMS}
@@ -232,9 +255,10 @@ def load_experimental_data():
 
 def load_initial_conditions():
     """Load initial conditions using the model metabolite map."""
-    metabolite_list = [''] * 107
+    n_with_phi = NUM_BASE_METABOLITES + 1  # base metabolites + pHi
+    metabolite_list = [''] * n_with_phi
     for name, idx in BRODBAR_METABOLITE_MAP.items():
-        if idx < 107:
+        if idx < n_with_phi:
             metabolite_list[idx] = name
     model = {'metab': metabolite_list}
     x0, _ = parse_initial_conditions(model, str(DATA_DIR / 'Initial_conditions_JA_Final.xls'))
@@ -333,7 +357,10 @@ class ObjectiveFunction:
         self.n_targets = len(self.target_names)
         
         # Pre-compute normalization factors (mean of absolute experimental values)
-        self.norm_factors = np.maximum(np.mean(np.abs(self.target_exp), axis=1), 1e-4)
+        # Floor of 0.01 mM prevents tiny-concentration metabolites (XAN=0.0008, INO=0.004,
+        # URT=0.005, SAH=0.007) from having inflated nRMSE that dominates the loss.
+        # A 0.001 mM error on XAN with old floor (1e-4) gave nRMSE=10; with 0.01 floor it's 0.1.
+        self.norm_factors = np.maximum(np.mean(np.abs(self.target_exp), axis=1), 0.01)
 
         # Energy pools for ATP-focused penalties
         self.atp_idx = 35
@@ -342,6 +369,22 @@ class ObjectiveFunction:
         self.init_adenylate_pool = float(
             max(x0[self.atp_idx] + x0[self.adp_idx] + x0[self.amp_idx], 1e-8)
         )
+        
+        # Pre-compute experimental adenylate pool trajectory for trajectory penalty
+        self.exp_pool_trajectory = None
+        if 'ATP' in name_to_row and 'ADP' in name_to_row and 'AMP' in name_to_row:
+            atp_exp = exp_values[name_to_row['ATP'], :]
+            adp_exp = exp_values[name_to_row['ADP'], :]
+            amp_exp = exp_values[name_to_row['AMP'], :]
+            self.exp_pool_trajectory = atp_exp + adp_exp + amp_exp  # (n_timepoints,)
+        
+        # Redox cofactor indices for conservation penalties
+        self.nad_idx = 75
+        self.nadh_idx = 76
+        self.nadp_idx = 77
+        self.nadph_idx = 78
+        self.init_nad_pool = float(x0[self.nad_idx] + x0[self.nadh_idx])
+        self.init_nadp_pool = float(x0[self.nadp_idx] + x0[self.nadph_idx])
         
         # Call counter
         self.n_calls = 0
@@ -407,6 +450,28 @@ class ObjectiveFunction:
 
                 total_loss += self.atp_penalty_weight * (atp_floor_pen + 0.5 * adp_floor_pen)
                 total_loss += self.pool_penalty_weight * pool_pen
+                
+                # Adenylate pool trajectory penalty: penalize deviation from
+                # experimental ATP+ADP+AMP curve at each timepoint (not just final)
+                if self.exp_pool_trajectory is not None:
+                    sim_pool = np.interp(self.time_exp, sol.t, atp + adp + amp)
+                    pool_norm = max(np.mean(self.exp_pool_trajectory), 0.1)
+                    pool_traj_rmse = np.sqrt(np.mean((sim_pool - self.exp_pool_trajectory)**2))
+                    pool_traj_nrmse = pool_traj_rmse / pool_norm
+                    total_loss += 5.0 * pool_traj_nrmse  # strong trajectory penalty
+            
+            # Redox conservation penalties (always active)
+            # NAD+NADH and NADP+NADPH should be approximately conserved
+            # (structurally conserved in ODEs, but numerical drift or extreme
+            # rate imbalances can break this during integration)
+            if self.init_nad_pool > 0.01:
+                nad_pool_final = float(y[self.nad_idx, -1] + y[self.nadh_idx, -1])
+                nad_drift = abs(nad_pool_final - self.init_nad_pool) / self.init_nad_pool
+                total_loss += 3.0 * nad_drift
+            if self.init_nadp_pool > 0.01:
+                nadp_pool_final = float(y[self.nadp_idx, -1] + y[self.nadph_idx, -1])
+                nadp_drift = abs(nadp_pool_final - self.init_nadp_pool) / self.init_nadp_pool
+                total_loss += 3.0 * nadp_drift
             
             if total_loss < self.best_loss:
                 self.best_loss = total_loss

@@ -135,12 +135,20 @@ def disable_bohr_tracking():
 # from parse import parse  # Commented out - not needed for testing
 
 # ===== MODEL STRUCTURE CONSTANTS =====
-NUM_BASE_METABOLITES = 106  # Core metabolites from reaction network
-NUM_TOTAL_METABOLITES = 108  # 106 base + pHi at index 106 + pHe at index 107
+NUM_BASE_METABOLITES = 113  # 106 original + 7 new (ASN, EOXOP, ESER, EARG, EGSSG, EGSH, EASN)
+NUM_TOTAL_METABOLITES = 115  # 113 base + pHi at index 113 + pHe at index 114
 H2O2_INDEX = 79  # H2O2 is part of base metabolites
-PHI_INDEX = 106  # Intracellular pH (pHi) dynamic metabolite
-PHE_INDEX = 107  # Extracellular pH (pHe) - NEW
+PHI_INDEX = 113  # Intracellular pH (pHi) dynamic metabolite
+PHE_INDEX = 114  # Extracellular pH (pHe)
 B23PG_INDEX = 15  # 2,3-Bisphosphoglycerate (2,3-BPG) for Bohr effect
+# New metabolite indices (model expansion for unused experimental data)
+ASN_INDEX = 106   # Asparagine (intracellular)
+EOXOP_INDEX = 107 # Extracellular 5-oxoproline
+ESER_INDEX = 108  # Extracellular serine
+EARG_INDEX = 109  # Extracellular arginine
+EGSSG_INDEX = 110 # Extracellular GSSG
+EGSH_INDEX = 111  # Extracellular GSH
+EASN_INDEX = 112  # Extracellular asparagine
 
 # ===== NUMERICAL SAFETY BOUNDS =====
 MIN_CONCENTRATION = 1e-6  # Minimum metabolite concentration (mM)
@@ -401,8 +409,16 @@ BRODBAR_METABOLITE_MAP = {
     'ECIT': 103,
     'EALA': 104,
     'ECYT': 105,
-    'PHI': 106,  # pHi (intracellular pH) - dynamically added metabolite
-    'PHE': 107   # pHe (extracellular pH) - added when pH perturbation is active
+    # New metabolites from model expansion (previously unused experimental data)
+    'ASN': 106,   # Asparagine (intracellular)
+    'EOXOP': 107, # Extracellular 5-oxoproline
+    'ESER': 108,  # Extracellular serine
+    'EARG': 109,  # Extracellular arginine
+    'EGSSG': 110, # Extracellular GSSG
+    'EGSH': 111,  # Extracellular GSH
+    'EASN': 112,  # Extracellular asparagine
+    'PHI': 113,   # pHi (intracellular pH) - dynamically added metabolite
+    'PHE': 114    # pHe (extracellular pH) - added when pH perturbation is active
 }
 
 def load_brodbar_initial_conditions(data_path: str = None) -> NDArray[np.float64]:
@@ -416,7 +432,7 @@ def load_brodbar_initial_conditions(data_path: str = None) -> NDArray[np.float64
     Returns:
     --------
     NDArray[np.float64]
-        Initial conditions vector for 107 metabolites (106 base + pHi)
+        Initial conditions vector for 114 metabolites (113 base + pHi)
     """
     if data_path is None:
         data_path = _IC_FILE
@@ -445,6 +461,15 @@ def load_brodbar_initial_conditions(data_path: str = None) -> NDArray[np.float64
             x0[H2O2_INDEX] = 0.0001  # H2O2 initial concentration
         x0[PHI_INDEX] = PHYSIOLOGICAL_PH  # pHi (intracellular pH)
         
+        # Set initial conditions for new metabolites (from experimental data)
+        x0[ASN_INDEX] = 0.44    # Asparagine (exp: ~0.44 mM at day 1)
+        x0[EOXOP_INDEX] = 0.12  # Extracellular oxoproline (exp: ~0.12 mM)
+        x0[ESER_INDEX] = 0.08   # Extracellular serine (exp: ~0.08 mM)
+        x0[EARG_INDEX] = 0.002  # Extracellular arginine (exp: ~0.002 mM)
+        x0[EGSSG_INDEX] = 0.007 # Extracellular GSSG (exp: ~0.007 mM)
+        x0[EGSH_INDEX] = 0.018  # Extracellular GSH (exp: ~0.018 mM)
+        x0[EASN_INDEX] = 0.01   # Extracellular asparagine (exp: ~0.01 mM)
+        
         print(f"Loaded experimental initial conditions: {set_count} metabolites from {data_path}")
         return x0
         
@@ -455,6 +480,14 @@ def load_brodbar_initial_conditions(data_path: str = None) -> NDArray[np.float64
         x0 = np.ones(NUM_TOTAL_METABOLITES) * 1.0
         x0[H2O2_INDEX] = 0.0001  # H2O2
         x0[PHI_INDEX] = PHYSIOLOGICAL_PH  # pHi
+        # New metabolites
+        x0[ASN_INDEX] = 0.44
+        x0[EOXOP_INDEX] = 0.12
+        x0[ESER_INDEX] = 0.08
+        x0[EARG_INDEX] = 0.002
+        x0[EGSSG_INDEX] = 0.007
+        x0[EGSH_INDEX] = 0.018
+        x0[EASN_INDEX] = 0.01
         return x0
 
 def _get_param(custom_params: Optional[Dict[str, float]], param_name: str, default_value: float) -> float:
@@ -760,6 +793,14 @@ def equadiff_brodbar(t: float,
     vmax_VSHMT = _get_param(custom_params, 'vmax_VSHMT', 0.1)             # Serine hydroxymethyltransferase: SER + THF → GLY + METTHF
     vmax_VPHGDH = _get_param(custom_params, 'vmax_VPHGDH', 0.1)           # Lumped serine biosynthesis: P3G + NAD + GLU → SER + AKG + NADH (PHGDH+PSAT+PSPH)
     vmax_VOPLAH = _get_param(custom_params, 'vmax_VOPLAH', 0.15)           # 5-oxoprolinase: OXOP + ATP → GLU + ADP + Pi (closes gamma-glutamyl cycle)
+    # New reactions for model expansion (previously unused experimental metabolites)
+    vmax_VASNG = _get_param(custom_params, 'vmax_VASNG', 0.15)             # Asparaginase: ASN → ASP + NH4
+    vmax_VEASN = _get_param(custom_params, 'vmax_VEASN', 0.05)             # ASN transport: ASN → EASN
+    vmax_VEOXOP = _get_param(custom_params, 'vmax_VEOXOP', 0.15)           # OXOP transport: OXOP → EOXOP
+    vmax_VESER = _get_param(custom_params, 'vmax_VESER', 0.15)             # SER transport: SER → ESER
+    vmax_VEARG = _get_param(custom_params, 'vmax_VEARG', 0.05)             # ARG transport: ARG → EARG
+    vmax_VEGSSG = _get_param(custom_params, 'vmax_VEGSSG', 0.01)           # GSSG transport: GSSG → EGSSG
+    vmax_VEGSH = _get_param(custom_params, 'vmax_VEGSH', 0.01)             # GSH transport: GSH → EGSH
     
     # ===== Km PARAMETERS (Michaelis-Menten Constants) =====
     # All Km values injectable for optimization
@@ -1056,6 +1097,16 @@ def equadiff_brodbar(t: float,
     VASS = 0.0  # RBC-strict: remove ATP-consuming argininosuccinate synthase branch
     Vpolyam = 0.0  # RBC-strict: remove polyamine/urea branch
     
+    # New reactions for model expansion (previously unused experimental metabolites)
+    ASN = max(x[ASN_INDEX], 1e-6)
+    VASNG = vmax_VASNG * mm(ASN, 0.5)  # Asparaginase: ASN → ASP + NH4 (Km ~0.5 mM for RBC asparaginase)
+    VEASN_rate = vmax_VEASN * mm(ASN, 0.3)  # ASN transport: ASN → EASN
+    VEOXOP = vmax_VEOXOP * mm(x[65], 0.5)  # OXOP transport: OXOP → EOXOP
+    VESER = vmax_VESER * mm(x[57], 0.3)  # SER transport: SER → ESER
+    VEARG = vmax_VEARG * mm(x[53], 0.1)  # ARG transport: ARG → EARG
+    VEGSSG = vmax_VEGSSG * mm(max(GSSG,1e-6), 1.0)  # GSSG transport: GSSG → EGSSG
+    VEGSH_rate = vmax_VEGSH * mm(max(GSH,1e-6), 1.0)  # GSH transport: GSH → EGSH
+    
     # Redox and detoxification
     VH2O2 = vmax_VH2O2 * mm(x[79], km_H2O2)  # H2O2 => O2
     VGPX = vmax_VGPX * mm(x[79], km_H2O2) * mm(max(GSH,1e-6), km_GSH)  # Glutathione peroxidase (implied)
@@ -1121,25 +1172,25 @@ def equadiff_brodbar(t: float,
     dxdt[50] = VSAM - VSAH  # ADOMET
     dxdt[51] = VSAH - VAHCY  # SAH
     dxdt[52] = VSAH  # METCYT
-    dxdt[53] = 0.0  # ARG (RBC-strict: VASL/VASTA/Vpolyam removed)
+    dxdt[53] = -VEARG  # ARG (RBC-strict: VASL/VASTA/Vpolyam removed; VEARG exports to extracellular)
     dxdt[54] = 0.0  # ARGSUC (RBC-strict: VASS/VASL removed)
     dxdt[55] = 0.0  # CITR (RBC-strict: VASS removed)
-    dxdt[56] = -VADSS - VASPTA - VEASP  # ASP (RBC-strict: VASS removed)
-    dxdt[57] = VPHGDH - VCBS - VSHMT  # SER (PHGDH produces SER; SHMT and CBS consume SER)
+    dxdt[56] = -VADSS - VASPTA - VEASP + VASNG  # ASP (RBC-strict: VASS removed; VASNG: asparaginase produces ASP from ASN)
+    dxdt[57] = VPHGDH - VCBS - VSHMT - VESER  # SER (PHGDH produces SER; SHMT, CBS, VESER consume SER)
     dxdt[58] = -VALATA - VEALA  # ALA (ALATA consumes ALA)
     dxdt[59] = -VGDH + VCSE - VASPTA - VALATA + VPHGDH  # AKG (PHGDH produces AKG; RBC-strict: VACO removed)
     dxdt[60] = VASPTA + VALATA + VGDH + VGMPS + VOPLAH - VGLNS - VGLUCYS - VEGLU - VPHGDH  # GLU (GDH, GMPS, OPLAH produce GLU; GLNS, GLUCYS, VEGLU, PHGDH consume)
     dxdt[61] = VGLNS - VGMPS - VEGLN  # GLN
-    dxdt[62] = VADA + VAMPD1 + VCSE + VGDA - VGLNS - VGDH - VENH4  # NH4 (GLNS consumes NH4; VGDA: guanine deaminase produces NH4)
+    dxdt[62] = VADA + VAMPD1 + VCSE + VGDA + VASNG - VGLNS - VGDH - VENH4  # NH4 (GLNS consumes NH4; VGDA, VASNG produce NH4)
     dxdt[63] = VGGT - VGGCT  # GLUAA
     dxdt[64] = VGGCT - VGGT  # AA
-    dxdt[65] = VGGCT - VOPLAH  # OXOP (GGCT produces; OPLAH consumes — closes gamma-glutamyl cycle)
+    dxdt[65] = VGGCT - VOPLAH - VEOXOP  # OXOP (GGCT produces; OPLAH consumes; VEOXOP exports)
     dxdt[66] = VCYSGLY - VGSS + VSHMT  # GLY (SHMT produces GLY; GSS consumes GLY)
     dxdt[67] = VCYSGLY + VCSE - VGLUCYS - VECYS  # CYS
     dxdt[68] = VGGT - VCYSGLY  # CYSGLY
     dxdt[69] = VGLUCYS - VGSS  # GLUCYS
-    dxdt[70] = 2*VGSR + VGSS - 2*VGPX - VGGT  # GSH
-    dxdt[71] = VGPX - VGSR  # GSSG
+    dxdt[70] = 2*VGSR + VGSS - 2*VGPX - VGGT - VEGSH_rate  # GSH (VEGSH exports to extracellular)
+    dxdt[71] = VGPX - VGSR - VEGSSG  # GSSG (VEGSSG exports to extracellular)
     dxdt[72] = 0.0  # ORN (RBC-strict: Vpolyam removed)
     dxdt[73] = -VEUREA  # UREA (RBC-strict: no intracellular production)
     dxdt[74] = 0.0  # ACCOA (RBC-strict: VACLY removed)
@@ -1178,6 +1229,15 @@ def equadiff_brodbar(t: float,
     dxdt[103] = VECIT   # ECIT (bidirectional: gains when CIT > ECIT)
     dxdt[104] = VEALA   # EALA (bidirectional: gains when ALA > EALA)
     dxdt[105] = VECYT   # ECYT (bidirectional: gains when CYT > ECYT)
+    
+    # New metabolites from model expansion (106-112)
+    dxdt[ASN_INDEX] = -VASNG - VEASN_rate  # ASN (asparagine: consumed by asparaginase and exported)
+    dxdt[EOXOP_INDEX] = VEOXOP   # EOXOP (extracellular oxoproline: accumulates from OXOP export)
+    dxdt[ESER_INDEX] = VESER     # ESER (extracellular serine)
+    dxdt[EARG_INDEX] = VEARG     # EARG (extracellular arginine)
+    dxdt[EGSSG_INDEX] = VEGSSG   # EGSSG (extracellular GSSG)
+    dxdt[EGSH_INDEX] = VEGSH_rate # EGSH (extracellular GSH)
+    dxdt[EASN_INDEX] = VEASN_rate # EASN (extracellular asparagine)
     
     # ===== DYNAMIC pH REGULATION =====
     # pHi (intracellular pH) - index 106
@@ -1277,7 +1337,7 @@ def equadiff_brodbar(t: float,
                 # Amino acids (intracellular)
                 'ALA': 58,    # Alanine
                 'ARG': 53,    # Arginine
-                'ASN': None,  # Asparagine (not in model, skip)
+                'ASN': ASN_INDEX,  # Asparagine (intracellular)
                 'ASP': 56,    # Aspartate
                 'CIT': 22,    # Citrate (TCA intermediate)
                 'CITR': 55,   # Citrulline
@@ -1310,23 +1370,23 @@ def equadiff_brodbar(t: float,
                 # Extracellular metabolites
                 'EADE': 89,   # Extracellular adenine
                 'EALA': 104,  # Extracellular alanine (forced to zero)
-                'EASN': None, # Extracellular asparagine (not in model)
+                'EASN': EASN_INDEX, # Extracellular asparagine
                 'ECIT': 103,  # Extracellular citrate
                 'ECYS': 93,   # Extracellular cysteine
                 'EFUM': 102,  # Extracellular fumarate
                 'EGLC': 85,   # Extracellular glucose
                 'EGLN': 91,   # Extracellular glutamine
                 'EGLU': 92,   # Extracellular glutamate
-                'EGSSG': None,# Extracellular GSSG (not in model)
-                'EGSH': None, # Extracellular GSH (not in model)
+                'EGSSG': EGSSG_INDEX,# Extracellular GSSG
+                'EGSH': EGSH_INDEX,  # Extracellular GSH
                 'EHYPX': 100, # Extracellular hypoxanthine
                 'EINO': 90,   # Extracellular inosine
                 'ELAC': 87,   # Extracellular lactate
                 'EMAL': 101,  # Extracellular malate
                 'ENH4': 86,   # Extracellular ammonia (forced to zero)
-                'EARG': None, # Extracellular arginine (not in model)
-                'EOXOP': None,# Extracellular oxoproline (not in model)
-                'ESER': None, # Extracellular serine (not in model)
+                'EARG': EARG_INDEX,  # Extracellular arginine
+                'EOXOP': EOXOP_INDEX,# Extracellular oxoproline
+                'ESER': ESER_INDEX,  # Extracellular serine
                 'EUREA': 96,  # Extracellular urea (forced constant)
                 'EURT': 97,   # Extracellular urate
                 'EXAN': 99,   # Extracellular xanthine

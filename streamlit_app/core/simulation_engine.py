@@ -37,7 +37,9 @@ class SimpleFluxTracker:
 # Import existing modules
 try:
     from equadiff_brodbar import (equadiff_brodbar, BRODBAR_METABOLITE_MAP,
-                                  _load_experimental_first_values)
+                                  _load_experimental_first_values,
+                                  NUM_BASE_METABOLITES, NUM_TOTAL_METABOLITES,
+                                  PHI_INDEX, PHE_INDEX)
     from curve_fit import curve_fit_ja
     from parse_initial_conditions import parse_initial_conditions
     from ph_perturbation import (PhPerturbation, create_step_perturbation,
@@ -200,9 +202,10 @@ class SimulationEngine:
                 progress_callback(0.2, "Setting up initial conditions...")
             
             # Create model structure for Bordbar
-            metabolite_list = [''] * 107
+            n_with_phi = NUM_BASE_METABOLITES + 1  # base metabolites + pHi
+            metabolite_list = [''] * n_with_phi
             for name, idx in BRODBAR_METABOLITE_MAP.items():
-                if idx < 107:
+                if idx < n_with_phi:
                     metabolite_list[idx] = name
             model = {'metab': metabolite_list}
             
@@ -253,13 +256,13 @@ class SimulationEngine:
             
             # Add pHe to initial conditions if pH perturbation is active
             if ph_perturbation:
-                # System needs 108 metabolites: 106 base + pHi + pHe
-                # x0 currently has 107 metabolites (106 + pHi)
+                # System needs NUM_TOTAL_METABOLITES: base + pHi + pHe
+                # x0 currently has base+1 metabolites (base + pHi)
                 # Add pHe at physiological value (7.4)
                 x0 = np.append(x0, 7.4)
                 n_metabolites = len(x0)
                 if progress_callback:
-                    progress_callback(0.3, f"Added pHe to initial conditions (108 metabolites)")
+                    progress_callback(0.3, f"Added pHe to initial conditions ({n_metabolites} metabolites)")
             
             # Setup Bohr effect tracking if pH perturbation is active (thread-safe, no globals)
             bohr_data = None
@@ -347,21 +350,22 @@ class SimulationEngine:
             
             # Post-processing: clamp any residual negative concentrations to zero
             # (derivative damping in equadiff_brodbar prevents most, this catches stragglers)
-            sol.y[:106] = np.maximum(sol.y[:106], 0.0)
+            sol.y[:NUM_BASE_METABOLITES] = np.maximum(sol.y[:NUM_BASE_METABOLITES], 0.0)
             
             if progress_callback:
                 progress_callback(0.8, "Processing results...")
             
             # Get metabolite names in correct index order (not dictionary order!)
-            # This is CRITICAL: sol.y columns are ordered by index 0-106, not by dict insertion order
+            # This is CRITICAL: sol.y columns are ordered by index 0-N, not by dict insertion order
             # Same logic as CLI main.py which builds metabolite_list correctly
-            metabolite_names = [''] * 107
+            n_with_phi = NUM_BASE_METABOLITES + 1
+            metabolite_names = [''] * n_with_phi
             for name, idx in BRODBAR_METABOLITE_MAP.items():
-                if idx < 107:
+                if idx < n_with_phi:
                     metabolite_names[idx] = name
             
             # Add PHE to metabolite names if pH perturbation was active
-            if ph_perturbation and n_metabolites == 108:
+            if ph_perturbation and n_metabolites == NUM_TOTAL_METABOLITES:
                 metabolite_names.append('PHE')  # Extracellular pH
             
             # Calculate duration
