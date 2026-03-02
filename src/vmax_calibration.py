@@ -94,7 +94,7 @@ CRITICAL_WEIGHT_METABOLITES = {
 # Cap per-metabolite nRMSE so structural outliers don't dominate the loss.
 # Metabolites with nRMSE > cap are likely structural model issues, not fixable
 # by Vmax tuning alone. Capping lets the optimizer focus on tractable improvements.
-NRMSE_CAP = 5.0
+NRMSE_CAP = 50.0
 
 # ============================================================================
 # PARAMETER PHASE DEFINITIONS
@@ -106,6 +106,7 @@ PHASE1_PARAMS = {
     # Core glycolysis & transport — controls GLC, LAC, ATP, B23PG, EGLC, ELAC
     'vmax_VHK':     (0.267472, 0.2,   5.0),    # Floor raised: HK must keep up with glucose import to prevent GLC accumulation
     'vmax_VPFK':    (0.391893, 0.8,   5.0),    # Floor raised: F6P accumulating nRMSE 60.6, PFK must keep up with HK+PGI
+    'vmax_VFDPA':   (1.156751, 0.5,  10.0),   # Aldolase: F16BP → GA3P+DHCP (R6 fix: was uncalibrated at 1.16 while VPFK=3.42 → F16BP nRMSE 25.7)
     'vmax_VPK':     (0.936322, 0.1,  50.0),   # widened — PEP accumulation fix
     'vmax_VPGK':    (4.690379, 0.5,  50.0),   # ATP producer (B13PG + ADP -> P3G + ATP)
     'vmax_VLDH':    (0.284952, 0.5,  10.0),    # Floor raised: PYR accumulating nRMSE 3.62, LDH was 0.24 (very high activity enzyme)
@@ -142,9 +143,9 @@ PHASE2_PARAMS = {
     'vmax_Vnucleo2': (0.15,     0.005, 2.0),
     'vmax_VGMPS':    (0.379205, 0.01, 4.0),
     'vmax_VPNPase1': (0.25,     0.1,  1.0),   # INO → HYPX + R1P (capped: was 1.55, HYPX accumulating nRMSE 8.1)
-    'vmax_VXAO':     (0.2,      0.1,  2.0),   # HYPX → XAN (floor raised: ONLY HYPX consumer, was 0.035 vs VPNPase1=1.55)
-    'vmax_VXAO2':    (0.15,     0.01, 0.5),   # XAN → URT (recapped: was 0.67, too much URT feeding EURT nRMSE 149.7)
-    'vmax_VEXAN':    (0.15,     0.0001, 0.01),   # XAN → EXAN efflux (EXAN 60x over: sim=0.31, exp=0.005 — need near-zero export)
+    'vmax_VXAO':     (0.2,      0.1,  1.0),   # HYPX → XAN (R6 fix: capped 2.0→1.0, was 0.66 causing XAN 2263x. Must be ≤ VXAO2+VEXAN)
+    'vmax_VXAO2':    (0.15,     0.05, 3.0),   # XAN → URT (R6 fix: ceiling 0.5→3.0, floor 0.01→0.05. Was 0.046 vs VXAO=0.66 → XAN 16:1 imbalance)
+    'vmax_VEXAN':    (0.15,     0.001, 0.5),   # XAN → EXAN (R6 fix: ceiling 0.01→0.5. XAN export is real pathway, was near-zero causing XAN 2263x)
     'vmax_VEURT':    (0.15,     0.01, 1.0),  # URT → EURT efflux (widened: was capped 0.05 but VXAO2=0.30 >> VEURT=0.01 → URT 592x. Must match VXAO2)
     'vmax_VEINO':    (0.0001,   0.0001, 0.003), # INO → EINO efflux (recapped: was 0.005, EINO sim=0.009 vs exp=0.003 nRMSE 4.17)
     'vmax_VADA':     (0.3,      0.01, 1.0),   # ADO → INO + NH4 (capped: was 4.59 → INO accumulation nRMSE 186)
@@ -167,7 +168,7 @@ PHASE3_PARAMS = {
     'vmax_VALATA':  (0.35,  0.01, 2.0),     # Ceiling raised: forward must balance reverse to prevent ALA over-accumulation
     'vmax_VASPTA':  (0.4,   0.01, 4.0),
     'vmax_VGLNS':   (0.4,   0.01, 4.0),
-    'vmax_VEGLN':   (0.001, 0.0001, 0.1),
+    'vmax_VEGLN':   (0.001, 0.01, 2.0),    # R6 fix: ceiling 0.1→2.0, floor→0.01. GLN export is major RBC pathway. Was 0.004 vs VGLNS=1.39 → GLN 25x
     'vmax_VEGLU':   (0.001, 0.0001, 2.0),   # Widened: GLU accumulates 24x exp after VACO added (storage lesion efflux)
     'vmax_VGSR':    (1.0,   0.05, 10.0),
     'vmax_VGPX':    (1.079815, 0.05, 10.0),
@@ -297,9 +298,10 @@ class ObjectiveFunction:
         self.adenylate_target = adenylate_target
         self.atp_penalty_weight = atp_penalty_weight
         self.pool_penalty_weight = pool_penalty_weight
-        self.t_eval_dense = np.linspace(0, t_max, 200)
+        self.t_eval_dense = np.linspace(1, t_max, 200)
         # For optimization speed: only solve at experimental timepoints
-        self.t_eval_fast = np.sort(np.unique(np.concatenate(([0], time_exp))))
+        # Start at t=1 to match production code (main.py, simulation_engine.py)
+        self.t_eval_fast = np.sort(np.unique(np.concatenate(([1], time_exp))))
         
         # Pre-compute experimental targets and weights
         self.target_names = []
@@ -353,10 +355,10 @@ class ObjectiveFunction:
         try:
             sol = solve_ivp(
                 lambda t, y: equadiff_brodbar(t, y, custom_params=custom_params, curve_fit_strength=0.0),
-                (0, self.t_max), self.x0,
-                method='RK23',
+                (1, self.t_max), self.x0,
+                method='LSODA',
                 t_eval=self.t_eval_fast,
-                rtol=1e-3, atol=1e-5,
+                rtol=1e-4, atol=1e-6,
             )
             
             if not sol.success:
@@ -419,7 +421,7 @@ class ObjectiveFunction:
         """Generate detailed per-metabolite RMSE report."""
         sol = solve_ivp(
             lambda t, y: equadiff_brodbar(t, y, custom_params=custom_params, curve_fit_strength=0.0),
-            (0, self.t_max), self.x0,
+            (1, self.t_max), self.x0,
             method='LSODA', t_eval=self.t_eval_dense,
             rtol=1e-5, atol=1e-7,
         )
@@ -468,9 +470,14 @@ def optimize_optuna(objective, phase_params, fixed_params, n_trials=200, study_n
         study_name=study_name or 'vmax_calibration',
     )
     
-    # Enqueue the default values as the first trial
-    default_trial = {pname: default for pname, (default, lo, hi) in phase_params.items()}
-    study.enqueue_trial(default_trial)
+    # Enqueue loaded calibrated values (clipped to bounds) as first trial,
+    # falling back to hardcoded defaults if no loaded value exists.
+    # This seeds the optimizer near the best known solution.
+    seed_trial = {}
+    for pname, (default, lo, hi) in phase_params.items():
+        loaded_val = fixed_params.get(pname, default)
+        seed_trial[pname] = float(np.clip(loaded_val, lo, hi))
+    study.enqueue_trial(seed_trial)
     
     study.optimize(optuna_objective, n_trials=n_trials, show_progress_bar=True)
     
@@ -516,10 +523,10 @@ def optimize_de(objective, phase_params, fixed_params, max_iter=150):
 def plot_comparison(objective, params, title_suffix="", save_path=None):
     """Plot simulation vs experimental for key metabolites."""
     
-    t_dense = np.linspace(0, objective.t_max, 200)
+    t_dense = np.linspace(1, objective.t_max, 200)
     sol = solve_ivp(
         lambda t, y: equadiff_brodbar(t, y, custom_params=params, curve_fit_strength=0.0),
-        (0, objective.t_max), objective.x0,
+        (1, objective.t_max), objective.x0,
         method='LSODA', t_eval=t_dense, rtol=1e-5, atol=1e-7,
     )
     y = np.maximum(sol.y, 0.0)
@@ -527,7 +534,7 @@ def plot_comparison(objective, params, title_suffix="", save_path=None):
     # Also run with defaults for comparison
     sol_def = solve_ivp(
         lambda t, y: equadiff_brodbar(t, y, custom_params=None, curve_fit_strength=0.0),
-        (0, objective.t_max), objective.x0,
+        (1, objective.t_max), objective.x0,
         method='LSODA', t_eval=t_dense, rtol=1e-5, atol=1e-7,
     )
     y_def = np.maximum(sol_def.y, 0.0)
@@ -640,6 +647,21 @@ def run_calibration(
         with open(load_params, 'r') as f:
             current_params = json.load(f)
         print(f"  Loaded {len(current_params)} params from {load_params}")
+        
+        # Clip loaded params to current bounds (bounds may have changed between rounds)
+        all_bounds = {}
+        for phase_params in PHASE_MAP.values():
+            all_bounds.update(phase_params)
+        clipped_count = 0
+        for pname in list(current_params.keys()):
+            if pname in all_bounds:
+                _, lo, hi = all_bounds[pname]
+                old_val = current_params[pname]
+                current_params[pname] = float(np.clip(old_val, lo, hi))
+                if current_params[pname] != old_val:
+                    clipped_count += 1
+        if clipped_count > 0:
+            print(f"  Clipped {clipped_count} params to updated bounds")
     
     # Evaluate baseline
     baseline_loss = objective(current_params if current_params else {})
@@ -721,6 +743,56 @@ def run_calibration(
     if optimized_phase_count == 0:
         raise ValueError(f"No parameters selected for phases={phases} and param_scope='{param_scope}'")
     
+    # Global refinement: joint optimization of ALL phase params together
+    # This fixes the root cause of phase interference — each phase can now
+    # see and compensate for other phases' effects.
+    if len(phases) > 1:
+        all_phase_params = {}
+        for phase_num in phases:
+            all_phase_params.update(get_phase_params(phase_num, param_scope=param_scope))
+        
+        n_global = len(all_phase_params)
+        global_trials = max(n_trials // 2, 50)  # Half the per-phase trials
+        
+        print(f"\n{'='*60}")
+        print(f"  Global Refinement Phase")
+        print(f"  Joint optimization of {n_global} parameters ({global_trials} trials)...")
+        
+        t_start = time.time()
+        
+        if HAS_OPTUNA:
+            best, best_val, study = optimize_optuna(
+                objective, all_phase_params, current_params,
+                n_trials=global_trials,
+                study_name='global_refinement',
+            )
+        else:
+            best, best_val, _ = optimize_de(
+                objective, all_phase_params, current_params,
+                max_iter=max(50, global_trials // 3),
+            )
+        
+        elapsed = time.time() - t_start
+        
+        # Only update if global refinement improved
+        candidate_params = current_params.copy()
+        candidate_params.update(best)
+        candidate_loss = objective(candidate_params)
+        
+        pre_global_loss = objective(current_params)
+        if candidate_loss <= pre_global_loss:
+            current_params.update(best)
+            print(f"\n  Global Refinement Results:")
+            print(f"    Time: {elapsed:.1f}s ({elapsed/60:.1f} min)")
+            print(f"    Loss: {pre_global_loss:.4f} -> {candidate_loss:.4f} "
+                  f"({(1-candidate_loss/pre_global_loss)*100:+.1f}%)")
+        else:
+            print(f"\n  Global refinement did not improve ({pre_global_loss:.4f} -> {candidate_loss:.4f})")
+            print(f"    Keeping pre-refinement parameters.")
+        
+        plot_comparison(objective, current_params, "(After Global Refinement)",
+                       save_path=str(OUT_DIR / 'global_refinement.png'))
+    
     # Final evaluation
     print(f"\n[3/4] Final evaluation...")
     final_loss = objective(current_params)
@@ -739,14 +811,23 @@ def run_calibration(
     plot_comparison(objective, current_params, "(Final Calibrated)",
                    save_path=str(OUT_DIR / 'final_calibrated.png'))
     
-    # Save results
+    # Save results (only if improved)
     print(f"\n[4/4] Saving results...")
     
-    # Save optimized parameters as JSON
     params_file = OUT_DIR / 'best_params.json'
-    with open(params_file, 'w') as f:
-        json.dump(current_params, f, indent=2)
-    print(f"  Parameters: {params_file}")
+    if final_loss <= baseline_loss:
+        # Improved or equal — save new params
+        with open(params_file, 'w') as f:
+            json.dump(current_params, f, indent=2)
+        print(f"  Parameters: {params_file}")
+    else:
+        # Regressed — save to a separate file, do NOT overwrite best
+        regressed_file = OUT_DIR / 'last_run_params.json'
+        with open(regressed_file, 'w') as f:
+            json.dump(current_params, f, indent=2)
+        print(f"  WARNING: Loss regressed ({baseline_loss:.4f} -> {final_loss:.4f})")
+        print(f"  NOT overwriting {params_file}")
+        print(f"  Regressed params saved to: {regressed_file}")
     
     # Save full report
     report_file = OUT_DIR / 'calibration_report.json'
