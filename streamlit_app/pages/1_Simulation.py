@@ -15,7 +15,7 @@ from core.plotting import plot_metabolites_interactive, plot_summary_statistics,
 from core.bohr_plotting import plot_bohr_overview, plot_bohr_summary_cards, create_bohr_interpretation_text
 from core.data_loader import validate_data_files, get_data_summary
 from core.auth import init_session_state, check_page_auth, get_user_name, get_user_id, AuthManager
-from core.styles import apply_global_styles
+from core.styles import apply_global_styles, render_page_header
 
 st.set_page_config(
     page_title="Simulation - RBC Model",
@@ -31,8 +31,11 @@ init_session_state()
 if not check_page_auth():
     st.stop()
 
-st.title("🚀 Run Metabolic Simulation")
-st.markdown("Configure and execute RBC metabolism simulations with custom parameters")
+render_page_header(
+    "Simulation Workspace",
+    "Configure mechanistic RBC storage simulations, compare built-in or uploaded experimental contexts, and study perturbation-driven behavior.",
+    "🧪"
+)
 
 # Check for custom uploaded data
 if 'uploaded_data_active' in st.session_state and st.session_state.get('uploaded_data_active'):
@@ -47,15 +50,13 @@ st.markdown("---")
 
 # Sidebar configuration
 with st.sidebar:
-    st.markdown("### 🧭 Navigation")
+    st.markdown("### Workspace")
     st.info("""
-    **📍 You are on:** Simulation
+    **Current page:** Simulation
     
-    **Main Pages:**
-    - 🏠 **Home** - Overview
-    - 🚀 **Simulation** - *You are here*
-    
-    Use the menu above to navigate ☝️
+    Use this workspace to define the simulation horizon,
+    choose the experimental context, and launch a storage run
+    before moving into flux or pathway analysis.
     """)
     
     st.markdown("---")
@@ -240,7 +241,6 @@ with col1:
                     st.session_state['simulation_done'] = True
                     
                     st.success(f"✅ Simulation completed in {results['duration']:.1f} seconds!")
-                    st.balloons()
                 else:
                     error_msg = results.get('error', 'Unknown error') if results else 'No results returned'
                     st.error(f"❌ Simulation failed: {error_msg}")
@@ -345,7 +345,7 @@ with tab3:
     **Step 4: Run Simulation**
     - Click "Start Simulation"
     - Wait for completion (~30-60 seconds)
-    - Explore results in Results page
+    - Explore outputs in Flux Analysis or Pathway Visualization
     
     **Step 5: Analyze & Export**
     - View interactive plots

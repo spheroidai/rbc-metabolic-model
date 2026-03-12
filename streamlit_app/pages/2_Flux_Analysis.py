@@ -34,7 +34,7 @@ from core.flux_plotting import (
 )
 from core.flux_estimator import FluxEstimator, compute_flux_from_uploaded_data
 from core.auth import init_session_state, check_page_auth
-from core.styles import apply_global_styles
+from core.styles import apply_global_styles, render_page_header
 
 # Page configuration
 st.set_page_config(
@@ -52,8 +52,11 @@ if not check_page_auth():
     st.stop()
 
 # Title
-st.title("🔬 Metabolic Flux Analysis")
-st.markdown("*Interactive exploration of reaction fluxes through metabolic pathways*")
+render_page_header(
+    "Flux Analysis",
+    "Inspect pathway activity, compare reaction-level behavior across time, and review flux patterns from simulated or uploaded experimental contexts.",
+    "🔬"
+)
 
 # Check if simulation results exist
 has_simulation = (
@@ -86,7 +89,7 @@ else:
 
 # Instructions at the top
 st.markdown("---")
-with st.expander("💡 How to Use This Page", expanded=False):
+with st.expander("How to Use Flux Analysis", expanded=False):
     st.markdown("""
     ### Simulated Flux Analysis
     1. **Flux Distributions**: Compare pathway activities and top 20 reactions at initial, midpoint, and final timepoints

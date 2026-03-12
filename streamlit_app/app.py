@@ -34,7 +34,7 @@ init_session_state()
 
 # Main header with gradient text
 st.markdown('<h1 class="hero-header">🩸 RBC Metabolic Model</h1>', unsafe_allow_html=True)
-st.markdown('<p class="hero-subtitle">Interactive Red Blood Cell Metabolism Simulation Platform</p>', unsafe_allow_html=True)
+st.markdown('<p class="hero-subtitle">Mechanistic simulation, validation, and calibration workspace for red blood cell metabolism under storage and perturbation conditions</p>', unsafe_allow_html=True)
 
 # Authentication status widget
 col_left, col_center, col_right = st.columns([1, 2, 1])
@@ -92,17 +92,17 @@ col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     st.markdown("""
     <div class="welcome-card">
-        <h3 style="color: #B91C1C; margin-top: 0;">Welcome to the RBC Metabolic Model</h3>
+        <h3 style="color: #B91C1C; margin-top: 0;">Mechanistic RBC Research Workspace</h3>
         <p style="color: #4B5563; line-height: 1.7;">
-            This platform provides an interactive interface to simulate and analyze <strong>red blood cell metabolism</strong> 
-            based on the comprehensive model by <strong>Bordbar et al. (2015)</strong>.
+            Use this platform to explore <strong>red blood cell metabolism</strong> through a mechanistic model grounded in
+            <strong>Bordbar et al. (2015)</strong>, with tools for simulation, experimental comparison, and parameter refinement.
         </p>
-        <p style="color: #4B5563; margin-bottom: 0;"><strong>Explore complex metabolic dynamics with:</strong></p>
+        <p style="color: #4B5563; margin-bottom: 0;"><strong>Core workflows in this workspace:</strong></p>
         <ul style="color: #4B5563; margin-top: 0.5rem;">
-            <li>115 metabolites across multiple pathways</li>
-            <li>Real-time simulation with adjustable parameters</li>
-            <li>Interactive visualizations and data export</li>
-            <li>Bohr effect and pH perturbation analysis</li>
+            <li>Run storage-condition simulations across configurable time horizons</li>
+            <li>Compare modeled trajectories against built-in or uploaded experimental datasets</li>
+            <li>Inspect pathway fluxes, pH responses, and oxygen-related behavior</li>
+            <li>Calibrate kinetic parameters for targeted research questions</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -110,18 +110,17 @@ with col2:
 render_gradient_divider()
 
 # Features section with modern cards
-st.markdown('<p class="section-header">🚀 Key Features</p>', unsafe_allow_html=True)
+st.markdown('<p class="section-header">Research Workflows</p>', unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3, gap="medium")
 
 with col1:
     st.markdown("""
     <div class="feature-card">
-        <h4>🧪 Metabolic Simulations</h4>
+        <h4>Simulation Workspace</h4>
         <p style="color: #4B5563; font-size: 0.95rem; line-height: 1.6;">
-            Run comprehensive RBC metabolism simulations with customizable time duration, 
-            adjustable curve fitting strength, multiple initial condition sources, 
-            and advanced solver options.
+            Configure RBC storage simulations with explicit control over time horizon,
+            data source, pH perturbation scenario, and numerical solver settings.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -129,11 +128,10 @@ with col1:
 with col2:
     st.markdown("""
     <div class="feature-card">
-        <h4>📊 Interactive Analysis</h4>
+        <h4>Data and Validation</h4>
         <p style="color: #4B5563; font-size: 0.95rem; line-height: 1.6;">
-            Visualize and analyze results with dynamic metabolite concentration plots, 
-            flux distribution heatmaps, experimental data comparison, 
-            and export to CSV, PDF, or ZIP.
+            Inspect metabolite trajectories, pathway fluxes, uploaded datasets,
+            and fit quality using interactive plots and exportable analytical views.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -141,11 +139,10 @@ with col2:
 with col3:
     st.markdown("""
     <div class="feature-card">
-        <h4>🔬 Advanced Studies</h4>
+        <h4>Calibration and Interpretation</h4>
         <p style="color: #4B5563; font-size: 0.95rem; line-height: 1.6;">
-            Explore physiological phenomena including Bohr effect simulation, 
-            pH perturbation scenarios, oxygen binding dynamics, 
-            and BPG (2,3-bisphosphoglycerate) analysis.
+            Explore pathway structure, interpret oxygen and pH behavior,
+            and run targeted calibration workflows to improve agreement with observed data.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -153,15 +150,15 @@ with col3:
 render_gradient_divider()
 
 # Model statistics with custom metric cards
-st.markdown('<p class="section-header">📈 Model Statistics</p>', unsafe_allow_html=True)
+st.markdown('<p class="section-header">Platform Snapshot</p>', unsafe_allow_html=True)
 
 col1, col2, col3, col4 = st.columns(4, gap="medium")
 
 with col1:
     st.markdown("""
     <div class="metric-card">
-        <div class="value">115</div>
-        <div class="label">Metabolites</div>
+        <div class="value">42</div>
+        <div class="label">Day Horizon</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -185,38 +182,37 @@ with col4:
     st.markdown("""
     <div class="metric-card">
         <div class="value">14</div>
-        <div class="label">Data Points</div>
+        <div class="label">Timepoints</div>
     </div>
     """, unsafe_allow_html=True)
 
 render_gradient_divider()
 
 # Quick start guide
-st.markdown('<p class="section-header">🎯 Quick Start Guide</p>', unsafe_allow_html=True)
+st.markdown('<p class="section-header">Getting Started</p>', unsafe_allow_html=True)
 
-with st.expander("**1️⃣ Run Your First Simulation**", expanded=False):
+with st.expander("**1️⃣ Run a baseline storage simulation**", expanded=False):
     st.markdown("""
-    1. Navigate to the **🚀 Simulation** page from the sidebar
-    2. Choose your simulation parameters (default settings work great!)
-    3. Click the **"▶️ Start Simulation"** button
-    4. Wait for the simulation to complete (~30-60 seconds)
-    5. View results and download outputs
+    1. Open the **Simulation** page from the sidebar
+    2. Keep the default settings for a first-pass RBC storage run
+    3. Start the simulation and wait for the trajectory to complete
+    4. Review the resulting metabolite and flux outputs
+    5. Export data for downstream analysis if needed
     """)
 
-with st.expander("**2️⃣ Analyze Results**", expanded=False):
+with st.expander("**2️⃣ Validate model behavior against data**", expanded=False):
     st.markdown("""
-    1. Go to the **📊 Results** page after running a simulation
-    2. Select metabolites of interest from the dropdown
-    3. Explore interactive plots with zoom and pan
-    4. Compare with experimental data
-    5. Export visualizations for your research
+    1. Use **Data Upload** to load your experimental dataset
+    2. Return to **Simulation** or **Flux Analysis** to compare model behavior
+    3. Inspect pathway activity, metabolite trends, and fit quality
+    4. Use exported tables and figures for research review
     """)
 
-with st.expander("**3️⃣ Explore Advanced Features**", expanded=False):
+with st.expander("**3️⃣ Move into advanced model analysis**", expanded=False):
     st.markdown("""
-    - **🔬 Bohr Effect**: Study oxygen binding cooperativity and BPG influence
-    - **⚗️ pH Analysis**: Simulate acidosis/alkalosis scenarios
-    - **📈 Advanced**: Compare multiple simulations and sensitivity analysis
+    - Use **Pathway Visualization** to inspect the network state over time
+    - Use **Parameter Calibration** for interactive exploratory fitting
+    - Use perturbation settings to study pH-driven storage responses
     """)
 
 st.markdown("---")
@@ -241,9 +237,6 @@ with st.sidebar:
         
         if st.button("🔬 Flux Analysis", width="stretch", key="sidebar_flux"):
             st.switch_page("pages/2_Flux_Analysis.py")
-        
-        if st.button("📊 Sensitivity Analysis", width="stretch", key="sidebar_sensitivity"):
-            st.switch_page("pages/3_Sensitivity_Analysis.py")
         
         if st.button("🎯 Parameter Calibration", width="stretch", key="sidebar_calibration"):
             st.switch_page("pages/5_Parameter_Calibration.py")
@@ -271,36 +264,37 @@ with st.sidebar:
     st.markdown("""
     <div class="info-box">
         <strong style="color: #B91C1C;">RBC Metabolic Model v2.0</strong><br><br>
-        Based on the comprehensive red blood cell 
-        metabolic reconstruction by Bordbar et al. (2015).<br><br>
-        <strong>Features:</strong>
+        Mechanistic red blood cell metabolism workspace based on the
+        Bordbar et al. (2015) reconstruction, with support for simulation,
+        validation, pathway interpretation, and exploratory calibration.<br><br>
+        <strong>Included capabilities:</strong>
         <ul style="margin: 0.5rem 0 0 0; padding-left: 1.2rem;">
-            <li>Multi-pathway metabolism</li>
-            <li>Experimental data integration</li>
-            <li>pH and Bohr effect modeling</li>
-            <li>Interactive web interface</li>
+            <li>Storage-condition simulation</li>
+            <li>Experimental dataset comparison</li>
+            <li>Pathway and flux exploration</li>
+            <li>Calibration-oriented analysis</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("### 🔗 Resources")
     st.markdown("""
-    - [Documentation](../Documentation/)
-    - [GitHub Repository](#)
     - [Original Article](https://www.cell.com/action/showPdf?pii=S2405-4712%2815%2900149-0)
+    - Project documentation is available in the repository workspace
+    - Use Data Upload to validate against your own experimental series
     """)
     
     st.markdown("### 💡 Tips")
     st.success("""
-    **New to metabolic modeling?**
+    **New to the workspace?**
     
-    Start with the default parameters in the 
-    Simulation page. The model is pre-configured 
-    with physiologically relevant values!
+    Start with the default Simulation settings,
+    then use Flux Analysis or Pathway Visualization
+    to interpret the resulting RBC storage trajectory.
     """)
     
     st.markdown("---")
-    st.caption("Developed by Jorgelindo da Veiga • 2025")
+    st.caption("Developed by Jorgelindo da Veiga • 2026")
 
 # Footer with gradient
 render_footer()

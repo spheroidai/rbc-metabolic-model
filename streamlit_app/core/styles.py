@@ -58,40 +58,42 @@ GLOBAL_CSS = """
     
     /* Hero header with gradient text */
     .hero-header {
-        font-size: 3.5rem;
+        font-size: 3.25rem;
         font-weight: 800;
-        background: linear-gradient(135deg, #DC2626 0%, #B91C1C 50%, #7F1D1D 100%);
+        background: linear-gradient(135deg, #991B1B 0%, #7F1D1D 50%, #5F1515 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         text-align: center;
         margin-bottom: 0.5rem;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.03em;
     }
     
     .hero-subtitle {
-        font-size: 1.25rem;
+        font-size: 1.15rem;
         color: var(--gray-600);
         text-align: center;
-        margin-bottom: 2rem;
+        margin: 0 auto 2.25rem auto;
         font-weight: 400;
+        line-height: 1.7;
+        max-width: 760px;
     }
     
     /* Modern feature cards */
     .feature-card {
-        background: linear-gradient(145deg, #FFFFFF 0%, var(--red-50) 100%);
+        background: linear-gradient(145deg, #FFFFFF 0%, #FFF7F7 100%);
         padding: 1.75rem;
         border-radius: 16px;
-        border: 1px solid var(--red-100);
-        box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1), 0 2px 4px -1px rgba(220, 38, 38, 0.06);
+        border: 1px solid #F3D4D4;
+        box-shadow: 0 10px 24px -16px rgba(127, 29, 29, 0.35);
         height: 100%;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.25s ease;
     }
     
     .feature-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 25px -5px rgba(220, 38, 38, 0.15), 0 10px 10px -5px rgba(220, 38, 38, 0.08);
-        border-color: var(--red-200);
+        transform: translateY(-2px);
+        box-shadow: 0 16px 28px -18px rgba(127, 29, 29, 0.4);
+        border-color: #E7BABA;
     }
     
     .feature-card h4 {
@@ -102,12 +104,12 @@ GLOBAL_CSS = """
     
     /* Metric cards with gradient */
     .metric-card {
-        background: linear-gradient(135deg, var(--red-500) 0%, var(--red-700) 100%);
+        background: linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%);
         padding: 1.5rem;
         border-radius: 12px;
         color: white;
         text-align: center;
-        box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.3);
+        box-shadow: 0 14px 24px -16px rgba(127, 29, 29, 0.55);
     }
     
     .metric-card .value {
@@ -125,17 +127,20 @@ GLOBAL_CSS = """
     
     /* Glass morphism welcome card */
     .welcome-card {
-        background: linear-gradient(135deg, rgba(254, 242, 242, 0.9) 0%, rgba(254, 226, 226, 0.7) 100%);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(220, 38, 38, 0.1);
+        background: linear-gradient(135deg, rgba(255, 250, 250, 0.96) 0%, rgba(254, 242, 242, 0.92) 100%);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(127, 29, 29, 0.08);
+        border-left: 6px solid var(--red-700);
         border-radius: 20px;
         padding: 2rem;
         margin: 1rem 0;
+        box-shadow: 0 16px 28px -24px rgba(127, 29, 29, 0.4);
     }
     
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, var(--gray-50) 0%, var(--red-50) 100%);
+        background: linear-gradient(180deg, #FCFCFD 0%, #FFF5F5 100%);
+        border-right: 1px solid rgba(127, 29, 29, 0.06);
     }
     
     /* Button styling */
@@ -201,13 +206,16 @@ GLOBAL_CSS = """
         font-size: 2rem;
         font-weight: 700;
         color: var(--red-700);
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.35rem;
+        letter-spacing: -0.02em;
     }
     
     .page-subtitle {
         font-size: 1rem;
         color: var(--gray-600);
         margin-bottom: 1.5rem;
+        line-height: 1.65;
+        max-width: 860px;
     }
 </style>
 """

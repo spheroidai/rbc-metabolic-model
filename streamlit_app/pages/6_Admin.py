@@ -16,7 +16,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from core.auth import AuthManager, init_session_state, require_auth, get_user_name
-from core.styles import apply_global_styles
+from core.styles import apply_global_styles, render_page_header
 
 st.set_page_config(
     page_title="Admin Dashboard - RBC Model",
@@ -38,7 +38,11 @@ def admin_page():
     auth = AuthManager()
     
     # Header
-    st.title("⚙️ Admin Dashboard")
+    render_page_header(
+        "Admin Dashboard",
+        "Manage user access, review workspace usage, and monitor operational activity for the RBC modeling platform.",
+        "⚙️"
+    )
     st.caption(f"Welcome back, {get_user_name()}!")
     
     # Tabs

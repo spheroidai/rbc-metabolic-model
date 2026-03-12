@@ -29,7 +29,7 @@ from core.metabolite_mapper import MetaboliteMapper
 from core.data_preprocessor import DataPreprocessor
 from core.flux_estimator import FluxEstimator, compute_flux_from_uploaded_data
 from core.auth import init_session_state, check_page_auth
-from core.styles import apply_global_styles
+from core.styles import apply_global_styles, render_page_header
 
 # Page configuration
 st.set_page_config(
@@ -47,11 +47,14 @@ if not check_page_auth():
     st.stop()
 
 # Title
-st.title("📤 Data Upload & Management")
-st.markdown("*Upload your experimental data to use in simulations*")
+render_page_header(
+    "Data Upload",
+    "Bring your experimental RBC datasets into the workspace, validate structure, and prepare them for comparison against simulated trajectories.",
+    "📤"
+)
 
 # Instructions
-with st.expander("💡 How to Use This Page", expanded=False):
+with st.expander("How to Use Data Upload", expanded=False):
     st.markdown("""
     ### Upload Process
     1. **Prepare Your Data**: CSV or Excel file with time series data
@@ -215,8 +218,8 @@ if uploaded_file is not None:
         
         # Column mapping section with intelligent mapper
         st.markdown("---")
-        st.header("🗺️ Intelligent Column Mapping")
-        st.caption("🤖 AI-powered mapping using synonym database and fuzzy matching")
+        st.header("🗺️ Assisted Column Mapping")
+        st.caption("Synonym-based and fuzzy-match-assisted mapping for metabolite columns")
         
         # Initialize mapper
         mapper = MetaboliteMapper()

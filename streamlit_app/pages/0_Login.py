@@ -14,7 +14,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from core.auth import AuthManager, init_session_state
-from core.styles import apply_login_styles
+from core.styles import apply_login_styles, render_page_header
 
 st.set_page_config(
     page_title="Login - RBC Metabolic Model",
@@ -81,9 +81,11 @@ if not auth.is_configured():
     st.stop()
 
 # Header
-st.title("🧬 RBC Metabolic Model")
-st.markdown("### Welcome!")
-st.caption("Red Blood Cell metabolism simulation and analysis platform")
+render_page_header(
+    "RBC Metabolic Model",
+    "Secure access to the red blood cell metabolism research workspace for simulation, validation, and calibration.",
+    "🩸"
+)
 
 st.markdown("---")
 
@@ -145,7 +147,6 @@ with tab1:
                         st.session_state.is_active = profile.get("is_active", True) if profile else True
                         
                         st.success("✅ Login successful!")
-                        st.balloons()
                         
                         # Redirect to home page
                         st.switch_page("app.py")
@@ -259,7 +260,6 @@ with tab2:
                         
                         *You can close this tab after verification.*
                         """)
-                        st.balloons()
                     else:
                         st.error(f"❌ {result.get('error', 'Signup failed')}")
 

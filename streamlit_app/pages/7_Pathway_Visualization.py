@@ -22,7 +22,7 @@ from core.pathway_visualization import (
     create_3d_metabolite_heatmap,
     create_hierarchical_clustering
 )
-from core.styles import apply_global_styles
+from core.styles import apply_global_styles, render_page_header
 
 # Page config
 st.set_page_config(
@@ -40,7 +40,11 @@ if not check_page_auth():
     st.stop()
 
 # Title
-st.title("🗺️ Advanced Pathway Visualization")
+render_page_header(
+    "RBC Metabolic Atlas",
+    "Explore pathway-level structure, time-dependent state changes, and metabolite relationships across the RBC network.",
+    "🗺️"
+)
 st.markdown("---")
 
 # Tabs for different visualizations
@@ -53,9 +57,9 @@ tab1, tab2, tab3, tab4 = st.tabs([
 
 # Sidebar - Simulation controls
 with st.sidebar:
-    st.header("⚙️ Simulation Settings")
+    st.header("Simulation Context")
     
-    run_new_sim = st.checkbox("Run New Simulation", value=False)
+    run_new_sim = st.checkbox("Run new simulation", value=False)
     
     if run_new_sim:
         t_max = st.slider("Simulation Time (days)", 1, 72, 7)

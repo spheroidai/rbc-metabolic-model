@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.parameter_calibration import ParameterCalibrator, CalibrationResult
 from core.simulation_engine import SimulationEngine
 from core.auth import init_session_state, check_page_auth
-from core.styles import apply_global_styles
+from core.styles import apply_global_styles, render_page_header
 
 st.set_page_config(
     page_title="Parameter Calibration - RBC Model",
@@ -37,10 +37,11 @@ if not check_page_auth():
     st.stop()
 
 # Page header
-st.title("🎯 Parameter Calibration")
-st.markdown("""
-Automatically calibrate enzyme parameters to match experimental data using advanced optimization algorithms.
-""")
+render_page_header(
+    "Parameter Calibration",
+    "Use this interactive workspace for exploratory calibration runs against reference or uploaded data before promoting changes into broader benchmark campaigns.",
+    "🎯"
+)
 
 # Tabs
 tab1, tab2, tab3 = st.tabs(["📊 Calibration Setup", "🔬 Results & Analysis", "📚 Help"])
@@ -340,7 +341,6 @@ with tab1:
                 st.session_state.calibration_result = result
                 
                 st.success(f"✅ Calibration completed! R² = {result.r_squared:.4f}")
-                st.balloons()
                 
             except Exception as e:
                 st.error(f"❌ Calibration failed: {str(e)}")
