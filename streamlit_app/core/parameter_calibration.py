@@ -41,7 +41,8 @@ class ParameterCalibrator:
                  simulation_function: Callable,
                  experimental_data: pd.DataFrame,
                  target_metabolites: List[str],
-                 time_points: np.ndarray):
+                 time_points: np.ndarray,
+                 time_unit: str = 'days'):
         """
         Initialize calibrator
         
@@ -50,26 +51,63 @@ class ParameterCalibrator:
             experimental_data: DataFrame with experimental measurements
             target_metabolites: List of metabolite names to calibrate against
             time_points: Time points for comparison
+            time_unit: Time unit for simulation/experimental alignment ('days' or 'hours')
         """
         self.simulation_function = simulation_function
-        self.experimental_data = experimental_data
+        if 'time' not in experimental_data.columns:
+            raise ValueError("experimental_data must contain a 'time' column")
+
+        # Canonicalize experimental time axis to numeric, monotonic values
+        exp_df = experimental_data.copy()
+        exp_df['time'] = pd.to_numeric(exp_df['time'], errors='coerce')
+        exp_df = exp_df.dropna(subset=['time']).sort_values('time').reset_index(drop=True)
+        self.experimental_data = exp_df
+
         self.target_metabolites = target_metabolites
-        self.time_points = time_points
+        self.time_points = np.asarray(time_points, dtype=float)
+        if self.time_points.ndim != 1:
+            raise ValueError("time_points must be a 1D array")
+        self.time_points = np.sort(np.unique(self.time_points))
+        self.time_unit = time_unit
         
         # Extract experimental values for target metabolites
         self.experimental_values = self._extract_experimental_values()
+
+    @staticmethod
+    def _interp_to_times(target_times: np.ndarray,
+                         source_times: np.ndarray,
+                         source_values: np.ndarray) -> np.ndarray:
+        """Interpolate source_values(source_times) onto target_times safely."""
+        source_times = np.asarray(source_times, dtype=float)
+        source_values = np.asarray(source_values, dtype=float)
+
+        valid = np.isfinite(source_times) & np.isfinite(source_values)
+        if np.count_nonzero(valid) < 2:
+            return np.zeros(len(target_times), dtype=float)
+
+        source_times = source_times[valid]
+        source_values = source_values[valid]
+        order = np.argsort(source_times)
+        source_times = source_times[order]
+        source_values = source_values[order]
+
+        # np.interp expects strictly increasing xp
+        unique_times, unique_idx = np.unique(source_times, return_index=True)
+        unique_values = source_values[unique_idx]
+        if len(unique_times) < 2:
+            return np.full(len(target_times), unique_values[0], dtype=float)
+
+        return np.interp(target_times, unique_times, unique_values)
     
     def _extract_experimental_values(self) -> np.ndarray:
         """Extract experimental values for target metabolites"""
         values = []
+        exp_times = self.experimental_data['time'].values
         for metabolite in self.target_metabolites:
             if metabolite in self.experimental_data.columns:
                 # Interpolate to match simulation time points
-                exp_times = self.experimental_data['time'].values
-                exp_values = self.experimental_data[metabolite].values
-                
-                # Linear interpolation
-                interp_values = np.interp(self.time_points, exp_times, exp_values)
+                exp_values = pd.to_numeric(self.experimental_data[metabolite], errors='coerce').values
+                interp_values = self._interp_to_times(self.time_points, exp_times, exp_values)
                 values.append(interp_values)
             else:
                 # If metabolite not found, use zeros (will be excluded from optimization)
@@ -120,12 +158,12 @@ class ParameterCalibrator:
     def _extract_simulation_values(self, sim_results: pd.DataFrame) -> np.ndarray:
         """Extract simulation values for target metabolites"""
         values = []
+        sim_times = pd.to_numeric(sim_results['time'], errors='coerce').values
         for metabolite in self.target_metabolites:
             if metabolite in sim_results.columns:
                 # Interpolate to match time points
-                sim_times = sim_results['time'].values
-                sim_values = sim_results[metabolite].values
-                interp_values = np.interp(self.time_points, sim_times, sim_values)
+                sim_values = pd.to_numeric(sim_results[metabolite], errors='coerce').values
+                interp_values = self._interp_to_times(self.time_points, sim_times, sim_values)
                 values.append(interp_values)
             else:
                 values.append(np.zeros(len(self.time_points)))
@@ -137,7 +175,9 @@ class ParameterCalibrator:
                   base_params: Dict,
                   method: str = 'differential_evolution',
                   max_iterations: int = 1000,
-                  confidence_level: float = 0.95) -> CalibrationResult:
+                  confidence_level: float = 0.95,
+                  compute_confidence_intervals: bool = True,
+                  compute_sensitivity: bool = True) -> CalibrationResult:
         """
         Calibrate parameters using optimization
         
@@ -147,6 +187,8 @@ class ParameterCalibrator:
             method: Optimization method ('differential_evolution', 'minimize', 'least_squares')
             max_iterations: Maximum number of iterations
             confidence_level: Confidence level for intervals (e.g., 0.95 for 95%)
+            compute_confidence_intervals: Whether to compute confidence intervals (expensive)
+            compute_sensitivity: Whether to compute sensitivity scores (expensive)
             
         Returns:
             CalibrationResult object with optimization results
@@ -177,26 +219,41 @@ class ParameterCalibrator:
         # Extract optimized parameters
         optimized_params = {name: result.x[i] for i, name in enumerate(param_names)}
         
-        # Calculate confidence intervals
-        confidence_intervals = self._calculate_confidence_intervals(
-            result.x, param_names, base_params, confidence_level
-        )
-        
-        # Calculate sensitivity
-        sensitivity = self._calculate_sensitivity(
-            result.x, param_names, base_params
-        )
+        # Optional post-optimization statistics (can be disabled for fast iterations)
+        confidence_intervals = {
+            name: (float(result.x[i]), float(result.x[i]))
+            for i, name in enumerate(param_names)
+        }
+        if compute_confidence_intervals:
+            confidence_intervals = self._calculate_confidence_intervals(
+                result.x, param_names, base_params, confidence_level
+            )
+
+        sensitivity = {name: 0.0 for name in param_names}
+        if compute_sensitivity:
+            sensitivity = self._calculate_sensitivity(
+                result.x, param_names, base_params
+            )
         
         # Calculate residuals and R²
         residuals = self._calculate_residuals(result.x, param_names, base_params)
         r_squared = self._calculate_r_squared(residuals)
+
+        message = result.message if hasattr(result, 'message') else 'Success'
+        skipped_stats = []
+        if not compute_confidence_intervals:
+            skipped_stats.append('confidence intervals')
+        if not compute_sensitivity:
+            skipped_stats.append('sensitivity')
+        if skipped_stats:
+            message = f"{message} (skipped {', '.join(skipped_stats)})"
         
         return CalibrationResult(
             optimized_params=optimized_params,
             initial_params=initial_params,
             objective_value=result.fun,
             success=result.success,
-            message=result.message if hasattr(result, 'message') else 'Success',
+            message=message,
             iterations=result.nit if hasattr(result, 'nit') else result.nfev,
             confidence_intervals=confidence_intervals,
             sensitivity=sensitivity,

@@ -8,6 +8,7 @@ from scipy.integrate import solve_ivp
 import time
 from pathlib import Path
 import sys
+import json
 
 # Add src to path - calculate from this file's actual location
 # __file__ is in streamlit_app/core/simulation_engine.py
@@ -40,14 +41,13 @@ try:
                                   _load_experimental_first_values,
                                   NUM_BASE_METABOLITES, NUM_TOTAL_METABOLITES,
                                   PHI_INDEX, PHE_INDEX)
-    from curve_fit import curve_fit_ja
     from parse_initial_conditions import parse_initial_conditions
     from ph_perturbation import (PhPerturbation, create_step_perturbation,
                                  create_ramp_perturbation, get_acidosis_scenario,
                                  get_alkalosis_scenario)
     SIMULATION_AVAILABLE = True
     PH_MODULES_AVAILABLE = True
-except ImportError as e:
+except ImportError:
     SIMULATION_AVAILABLE = False
     PH_MODULES_AVAILABLE = False
     import traceback
@@ -92,7 +92,8 @@ class SimulationEngine:
                       ph_target=7.0,
                       ph_duration=6,
                       progress_callback=None,
-                      custom_params=None):
+                      custom_params=None,
+                      autoload_calibrated_params=True):
         """
         Run RBC metabolic simulation
         
@@ -114,6 +115,9 @@ class SimulationEngine:
             Dictionary of custom parameter values for optimization.
             Format: {'vmax_VELAC': 0.65, 'km_LAC': 0.8, ...}
             If None, uses default model parameters.
+        autoload_calibrated_params : bool
+            If True, auto-load Simulations/brodbar/calibration/best_params.json
+            when custom_params is None. Set False for reproducible default baselines.
         
         Returns:
         --------
@@ -126,20 +130,23 @@ class SimulationEngine:
         try:
             self.status = "running"
             start_time = time.time()
+            params_source = 'provided' if custom_params is not None else 'defaults'
             
-            # Auto-load calibrated parameters if none provided
-            if custom_params is None:
+            # Auto-load calibrated parameters if none provided and explicitly enabled
+            if custom_params is None and autoload_calibrated_params:
                 cal_path = project_root / "Simulations" / "brodbar" / "calibration" / "best_params.json"
                 if cal_path.exists():
-                    import json
                     try:
                         with open(cal_path, 'r', encoding='utf-8-sig') as f:
                             custom_params = json.load(f)
                     except (json.JSONDecodeError, UnicodeDecodeError):
                         with open(cal_path, 'r', encoding='utf-16') as f:
                             custom_params = json.load(f)
+                    params_source = 'auto_loaded'
                     if progress_callback:
                         progress_callback(0.05, f"Auto-loaded {len(custom_params)} calibrated MM parameters")
+            elif custom_params is None and progress_callback:
+                progress_callback(0.05, "Using default MM parameters (autoload disabled)")
             
             # Load experimental first values for conservation pools (same as main.py)
             try:
@@ -215,7 +222,7 @@ class SimulationEngine:
             
             # Parse initial conditions
             ic_file = src_path / "Initial_conditions_JA_Final.xls"
-            x0, x0_names = parse_initial_conditions(model, str(ic_file))
+            x0, _ = parse_initial_conditions(model, str(ic_file))
             n_metabolites = len(x0)
             
             if progress_callback:
@@ -224,31 +231,49 @@ class SimulationEngine:
             # Configure pH perturbation if requested
             ph_perturbation = None
             if ph_perturbation_type != "None" and PH_MODULES_AVAILABLE:
+                # Internal simulation time axis is days. UI controls expose hours,
+                # so convert user-facing pH timing inputs to days here.
+                ph_start_days = 2.0 / 24.0
+                ph_duration_days = float(ph_duration) / 24.0
                 try:
                     if ph_perturbation_type == "Acidosis":
-                        ph_perturbation = get_acidosis_scenario(ph_severity)
+                        acidosis_targets = {"Mild": 7.2, "Moderate": 7.0, "Severe": 6.8}
+                        pH_final = acidosis_targets.get(ph_severity, 7.0)
+                        ph_perturbation = create_ramp_perturbation(
+                            pH_initial=7.4,
+                            pH_final=pH_final,
+                            t_start=ph_start_days,
+                            duration=ph_duration_days
+                        )
                         if progress_callback:
-                            progress_callback(0.28, f"pH: Acidosis ({ph_severity})")
+                            progress_callback(0.28, f"pH: Acidosis ({ph_severity}, duration={ph_duration:.1f}h)")
                     elif ph_perturbation_type == "Alkalosis":
-                        ph_perturbation = get_alkalosis_scenario(ph_severity)
+                        alkalosis_targets = {"Mild": 7.6, "Moderate": 7.7, "Severe": 7.8}
+                        pH_final = alkalosis_targets.get(ph_severity, 7.7)
+                        ph_perturbation = create_ramp_perturbation(
+                            pH_initial=7.4,
+                            pH_final=pH_final,
+                            t_start=ph_start_days,
+                            duration=ph_duration_days
+                        )
                         if progress_callback:
-                            progress_callback(0.28, f"pH: Alkalosis ({ph_severity})")
+                            progress_callback(0.28, f"pH: Alkalosis ({ph_severity}, duration={ph_duration:.1f}h)")
                     elif ph_perturbation_type == "Step":
                         ph_perturbation = create_step_perturbation(
                             pH_target=ph_target,
-                            t_start=2.0
+                            t_start=ph_start_days
                         )
                         if progress_callback:
-                            progress_callback(0.28, f"pH: Step to {ph_target}")
+                            progress_callback(0.28, f"pH: Step to {ph_target} at {ph_start_days*24.0:.1f}h")
                     elif ph_perturbation_type == "Ramp":
                         ph_perturbation = create_ramp_perturbation(
                             pH_initial=7.4,
                             pH_final=ph_target,
-                            t_start=2.0,
-                            duration=ph_duration
+                            t_start=ph_start_days,
+                            duration=ph_duration_days
                         )
                         if progress_callback:
-                            progress_callback(0.28, f"pH: Ramp to {ph_target} over {ph_duration}h")
+                            progress_callback(0.28, f"pH: Ramp to {ph_target} over {ph_duration:.1f}h")
                     
                     if ph_perturbation:
                         if progress_callback:
@@ -391,6 +416,7 @@ class SimulationEngine:
                 'success': True,
                 'solver': solver_method,
                 'curve_fit_strength': curve_fit_strength,
+                'custom_params_source': params_source,
                 'ph_perturbation': {
                     'type': ph_perturbation_type,
                     'severity': ph_severity if ph_perturbation_type in ["Acidosis", "Alkalosis"] else None,

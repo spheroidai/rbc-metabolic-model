@@ -213,6 +213,21 @@ with tab1:
             step=0.01,
             format="%.2f"
         )
+
+        fast_mode = st.checkbox(
+            "⚡ Fast mode (skip CI + sensitivity)",
+            value=True,
+            help="Recommended for iterative runs. Disables expensive confidence-interval and sensitivity calculations."
+        )
+
+        max_sim_warnings = st.number_input(
+            "Max simulation warning messages",
+            min_value=0,
+            max_value=50,
+            value=3,
+            step=1,
+            help="Limits warning spam when some trial simulations fail during optimization."
+        )
     
     st.markdown("---")
     
@@ -230,19 +245,20 @@ with tab1:
     if calibrate_button:
         with st.spinner("🔄 Calibrating parameters... This may take a few minutes."):
             try:
-                # Extract time points from experimental data
-                time_points_data = exp_data['time'].values
-                
-                # Convert days to hours if needed (Bordbar data is in days)
-                max_time = time_points_data.max()
-                if max_time < 100:  # Assume days if < 100
-                    time_points_hours = time_points_data * 24
-                    st.info(f"📅 Time points converted from days to hours (max: {max_time:.1f} days = {max_time*24:.1f}h)")
-                else:
-                    time_points_hours = time_points_data
+                # Canonical calibration time unit is days (same as SimulationEngine and Bordbar columns)
+                exp_data_cal = exp_data.copy()
+                exp_data_cal['time'] = pd.to_numeric(exp_data_cal['time'], errors='coerce')
+                exp_data_cal = exp_data_cal.dropna(subset=['time']).sort_values('time').reset_index(drop=True)
+                time_points_days = exp_data_cal['time'].values.astype(float)
+                if len(time_points_days) == 0:
+                    raise ValueError("No valid numeric time points found in experimental data")
+                st.info(
+                    f"📅 Calibration time unit: days (min={time_points_days.min():.1f}, max={time_points_days.max():.1f})"
+                )
                 
                 # Setup simulation function
                 engine = SimulationEngine()
+                sim_warning_state = {'count': 0}
                 
                 def simulation_function(params):
                     """Wrapper for simulation with custom parameters.
@@ -252,16 +268,16 @@ with tab1:
                                Keys must match equadiff_brodbar _get_param names.
                     """
                     try:
-                        # Calculate simulation time in days (SimulationEngine uses days)
-                        max_time_hours = max(time_points_hours)
-                        t_max_days = max_time_hours / 24.0
+                        # SimulationEngine and calibration both use days
+                        t_max_days = float(np.max(time_points_days))
                         
                         # Run simulation with custom parameters injected into ODE
                         result_dict = engine.run_simulation(
                             t_max=t_max_days,
                             ic_source="Bordbar",
                             solver_method="RK45",
-                            custom_params=params
+                            custom_params=params,
+                            autoload_calibrated_params=False
                         )
                         
                         # Check for errors
@@ -270,10 +286,9 @@ with tab1:
                         
                         # Convert dict to DataFrame
                         time_days = result_dict['t']
-                        time_hours = time_days * 24.0  # Convert to hours
                         
                         # Build DataFrame with time + metabolites
-                        data = {'time': time_hours}
+                        data = {'time': time_days}
                         metabolite_names = result_dict['metabolite_names']
                         
                         for i, metab_name in enumerate(metabolite_names):
@@ -284,20 +299,27 @@ with tab1:
                         return result_df
                         
                     except Exception as e:
-                        st.warning(f"⚠️ Simulation failed: {str(e)}")
+                        warning_count = sim_warning_state['count']
+                        if warning_count < int(max_sim_warnings):
+                            st.warning(f"⚠️ Simulation failed: {str(e)}")
+                        elif warning_count == int(max_sim_warnings):
+                            st.warning("⚠️ Additional simulation failure warnings suppressed.")
+                        sim_warning_state['count'] = warning_count + 1
+
                         # Return dummy data to allow continuation
                         dummy_df = pd.DataFrame({
-                            'time': time_points_hours,
-                            **{met: np.ones(len(time_points_hours)) for met in target_metabolites}
+                            'time': time_points_days,
+                            **{met: np.ones(len(time_points_days)) for met in target_metabolites}
                         })
                         return dummy_df
                 
                 # Create calibrator
                 calibrator = ParameterCalibrator(
                     simulation_function=simulation_function,
-                    experimental_data=exp_data,
+                    experimental_data=exp_data_cal,
                     target_metabolites=target_metabolites,
-                    time_points=time_points_hours
+                    time_points=time_points_days,
+                    time_unit='days'
                 )
                 
                 # Base parameters: start with empty dict (defaults are in equadiff_brodbar)
@@ -309,7 +331,9 @@ with tab1:
                     base_params=base_params,
                     method=optimization_method,
                     max_iterations=max_iterations,
-                    confidence_level=confidence_level
+                    confidence_level=confidence_level,
+                    compute_confidence_intervals=not fast_mode,
+                    compute_sensitivity=not fast_mode
                 )
                 
                 # Store result in session state
@@ -332,6 +356,9 @@ with tab2:
         
         # Summary metrics
         col1, col2, col3, col4 = st.columns(4)
+
+        if "skipped" in result.message.lower():
+            st.info(f"⚡ Fast mode summary: {result.message}")
         
         with col1:
             st.metric("R² Score", f"{result.r_squared:.4f}")

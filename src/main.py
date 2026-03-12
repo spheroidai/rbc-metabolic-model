@@ -36,7 +36,6 @@ _DATA_FILE = _SRC_DIR / "Data_Bordbar_et_al_exp.xlsx"
 _IC_FILE = _SRC_DIR / "Initial_conditions_JA_Final.xls"
 
 # Import custom modules
-from curve_fit import curve_fit_ja
 from parse import parse
 from parse_initial_conditions import parse_initial_conditions
 from solver import solver
@@ -88,7 +87,7 @@ def main():
     Model Details:
     --------------
     - Simulates 114 metabolites (113 base metabolites + pHi)
-    - Integration time: t=1 to t=42 hours (RBC storage conditions)
+    - Integration time: t=1 to t=42 days (RBC storage conditions)
     - Uses experimental data from Data_Bordbar_et_al_exp.xlsx
     - Implements pure Michaelis-Menten kinetics
     
@@ -125,6 +124,8 @@ def main():
                         help='Curve fitting strength: 0.0=pure MM kinetics (default), 0.5=50%% blend, 1.0=full curve fitting')
     parser.add_argument('--load-params', type=str, default=None,
                         help='Path to JSON file with calibrated parameters (e.g. Simulations/brodbar/calibration/best_params.json)')
+    parser.add_argument('--no-auto-load-params', action='store_true',
+                        help='Disable implicit loading of Simulations/brodbar/calibration/best_params.json and use default parameters unless --load-params is set')
     
     # pH perturbation arguments
     parser.add_argument('--ph-perturbation', type=str, choices=['none', 'acidosis', 'alkalosis', 'step', 'ramp'], 
@@ -144,10 +145,11 @@ def main():
     author_name = args.author
     curve_fit_strength = args.curve_fit
     
-    # Load calibrated parameters
-    # Auto-load best_params.json for brodbar model unless --load-params explicitly set
+    # Load calibrated parameters with explicit source control
+    # Priority: --load-params > auto-load (unless disabled) > defaults
     import json
     custom_params = None
+    params_source = 'defaults'
     _default_cal_path = Path("Simulations/brodbar/calibration/best_params.json")
     def _load_json_params(path):
         """Load JSON params, handling UTF-16 or UTF-8 encoding."""
@@ -160,11 +162,15 @@ def main():
 
     if args.load_params:
         custom_params = _load_json_params(args.load_params)
+        params_source = 'file'
         print(f"Loaded {len(custom_params)} calibrated parameters from {args.load_params}")
-    elif model_type == 'brodbar' and _default_cal_path.exists():
+    elif model_type == 'brodbar' and (not args.no_auto_load_params) and _default_cal_path.exists():
         custom_params = _load_json_params(_default_cal_path)
+        params_source = 'auto_loaded'
         print(f"Auto-loaded {len(custom_params)} calibrated parameters from {_default_cal_path}")
-        print(f"  (use --load-params to override, or delete the file to use defaults)")
+        print("  (use --no-auto-load-params for reproducible default baselines)")
+    elif model_type == 'brodbar' and args.no_auto_load_params:
+        print("Using default Brodbar parameters (--no-auto-load-params set)")
     
     # Validate curve fitting strength
     if curve_fit_strength < 0.0 or curve_fit_strength > 2.0:
@@ -189,25 +195,47 @@ def main():
         print(f"\n{'='*70}")
         print("pH PERTURBATION CONFIGURATION")
         print(f"{'='*70}")
+
+        # Internal simulation time is in days; CLI pH timing inputs remain in hours.
+        ph_start_days = args.ph_start / 24.0
+        ph_duration_days = args.ph_duration / 24.0
         
         if args.ph_perturbation == 'acidosis':
-            ph_perturbation = get_acidosis_scenario(args.ph_severity)
-            print(f"✓ Acidosis scenario ({args.ph_severity})")
+            target_map = {'mild': 7.2, 'moderate': 7.0, 'severe': 6.8}
+            duration_map_h = {'mild': 4.0, 'moderate': 6.0, 'severe': 8.0}
+            target_pH = target_map.get(args.ph_severity, 7.0)
+            duration_h = duration_map_h.get(args.ph_severity, 6.0)
+            ph_perturbation = create_ramp_perturbation(
+                pH_initial=7.4,
+                pH_final=target_pH,
+                t_start=ph_start_days,
+                duration=duration_h / 24.0,
+            )
+            print(f"✓ Acidosis scenario ({args.ph_severity}) over {duration_h:.1f}h")
         elif args.ph_perturbation == 'alkalosis':
-            ph_perturbation = get_alkalosis_scenario(args.ph_severity)
-            print(f"✓ Alkalosis scenario ({args.ph_severity})")
+            target_map = {'mild': 7.6, 'moderate': 7.7, 'severe': 7.8}
+            duration_map_h = {'mild': 4.0, 'moderate': 6.0, 'severe': 8.0}
+            target_pH = target_map.get(args.ph_severity, 7.7)
+            duration_h = duration_map_h.get(args.ph_severity, 6.0)
+            ph_perturbation = create_ramp_perturbation(
+                pH_initial=7.4,
+                pH_final=target_pH,
+                t_start=ph_start_days,
+                duration=duration_h / 24.0,
+            )
+            print(f"✓ Alkalosis scenario ({args.ph_severity}) over {duration_h:.1f}h")
         elif args.ph_perturbation == 'step':
             ph_perturbation = create_step_perturbation(
                 pH_target=args.ph_target,
-                t_start=args.ph_start
+                t_start=ph_start_days
             )
             print(f"✓ Step perturbation: pH 7.4 → {args.ph_target} at t={args.ph_start}h")
         elif args.ph_perturbation == 'ramp':
             ph_perturbation = create_ramp_perturbation(
                 pH_initial=7.4,
                 pH_final=args.ph_target,
-                t_start=args.ph_start,
-                duration=args.ph_duration
+                t_start=ph_start_days,
+                duration=ph_duration_days
             )
             print(f"✓ Ramp perturbation: pH 7.4 → {args.ph_target} over {args.ph_duration}h")
         
@@ -227,6 +255,7 @@ def main():
     
     if ph_perturbation:
         print(f"  pH perturbation: {args.ph_perturbation} ({args.ph_severity if args.ph_perturbation in ['acidosis', 'alkalosis'] else 'custom'})")
+    print(f"  Parameter source: {params_source}")
     
     start_time = time.time()
     
@@ -303,11 +332,11 @@ def main():
     # Parse initial conditions
     print("Setting up initial conditions...")
     # Use absolute path for initial conditions file
-    x0, x0_names = None, None
+    x0 = None
     if _IC_FILE.exists():
         print(f"Found initial conditions file at: {_IC_FILE}")
         try:
-            x0, x0_names = parse_initial_conditions(model, str(_IC_FILE))
+            x0, _ = parse_initial_conditions(model, str(_IC_FILE))
         except Exception as e:
             print(f"Error parsing {_IC_FILE}: {e}")
     
@@ -320,7 +349,6 @@ def main():
             x0 = np.ones(n_with_phi)  # Default to 1 for all metabolites (base + pHi)
             x0[H2O2_INDEX] = 0.0001  # H2O2
             x0[PHI_INDEX] = 7.2    # pHi
-            x0_names = [f"x{i}" for i in range(n_with_phi)]
         elif model_type == 'refactored':
             # Will use default_ic() later
             pass
@@ -328,7 +356,7 @@ def main():
             print("Error: No initial conditions available for original model")
             return
     # Note: parse_initial_conditions already prints status messages
-    
+   
     # Show some key metabolite initial conditions
     print("Key metabolite initial conditions:")
     print(f"  Total metabolites: {len(x0)}")
@@ -359,31 +387,35 @@ def main():
         if len(x0) < 108:
             print("Adding H2O2 and pHi metabolites to initial conditions...")
             x0 = np.append(x0, [0.0001, 7.2])  # H2O2, pHi
-    
+
     # Set time range for simulation
     # For Brodbar data, the first experimental point is at t=1 (not t=0).
     # Start integration at t=1 to ensure the initial simulation point aligns with the first experimental value.
+    # Time unit is days.
     time_range = [1, 42]
-    
+
     # Run the numerical integration
     print(f"Solving system of {len(model['metab'])} differential equations...")
     try:
         if model_type == 'brodbar':
-            from equadiff_brodbar import (NUM_BASE_METABOLITES, NUM_TOTAL_METABOLITES, PHI_INDEX, PHE_INDEX, H2O2_INDEX)
-            num_metabolites = NUM_TOTAL_METABOLITES if ph_perturbation else (NUM_BASE_METABOLITES + 1)
-            print(f"Using full Brodbar model equations ({num_metabolites} metabolites: {NUM_BASE_METABOLITES} base + pHi{' + pHe' if ph_perturbation else ''})")
-            # Use equadiff_brodbar directly with solve_ivp
             from scipy.integrate import solve_ivp
-            from equadiff_brodbar import (equadiff_brodbar, BRODBAR_METABOLITE_MAP, 
-                                         _load_experimental_first_values,
-                                         enable_flux_tracking, disable_flux_tracking,
-                                         enable_bohr_tracking, disable_bohr_tracking)
-            
+            from equadiff_brodbar import (
+                equadiff_brodbar,
+                _load_experimental_first_values,
+                enable_flux_tracking,
+                disable_flux_tracking,
+                enable_bohr_tracking,
+                disable_bohr_tracking,
+                enable_pH_modulation,
+                disable_pH_modulation,
+            )
+
             # Load experimental data once before integration (performance optimization)
             print("Loading experimental data for conservation pools...")
             _load_experimental_first_values()
-            
+
             # Ensure x0 has correct number of metabolites
+            num_metabolites = NUM_TOTAL_METABOLITES if ph_perturbation else NUM_BASE_METABOLITES + 1
             target_size = num_metabolites
             if len(x0) != target_size:
                 print(f"Adjusting initial conditions from {len(x0)} to {target_size} metabolites")
@@ -397,7 +429,7 @@ def main():
                     x0 = x0_extended
                 else:
                     x0 = x0[:target_size]
-            
+
             # Clean initial conditions to prevent NaN/Inf
             x0 = np.nan_to_num(x0, nan=1e-6, posinf=1e6, neginf=1e-6)
             x0 = np.maximum(x0, 1e-6)  # Ensure all values are positive
@@ -405,20 +437,20 @@ def main():
             # Use initial conditions directly from parse_initial_conditions.py
             # No remapping needed - the parse_initial_conditions already handles proper mapping
             print("Using initial conditions directly from parse_initial_conditions.py (no remapping)")
-            
+
             print(f"Starting integration with {len(x0)} initial conditions")
             print(f"Initial condition range: {x0.min():.6e} - {x0.max():.6e}")
-            
+
             # Enable pH modulation if perturbation is configured
             if ph_perturbation:
                 print("Enabling pH-dependent enzyme modulation...")
                 enable_pH_modulation(ph_perturbation)
-            
+
             # Enable flux tracking
             print("Enabling flux tracking for all reactions...")
             flux_tracker = FluxTracker()
             enable_flux_tracking(flux_tracker)
-            
+
             # Enable Bohr effect tracking if pH modulation is active
             bohr_tracker = None
             if ph_perturbation:
@@ -429,35 +461,39 @@ def main():
                 else:
                     print("⚠ Bohr effect tracking unavailable")
                     bohr_tracker = None
-            
+
             # Use default RK45 solver with standard settings
             # Tighter max_step for low curve fit to prevent negative concentrations
             t_max_sim = time_range[1] - time_range[0]
             max_step = t_max_sim / 500 if curve_fit_strength < 0.3 else t_max_sim / 150
             print(f"Integrating with RK45 solver (max_step={max_step:.4f})...")
-            
+
             solution = solve_ivp(
-                lambda t, y: equadiff_brodbar(t, y, thermo_constraints=None, 
-                                              custom_params=custom_params, 
-                                              curve_fit_strength=curve_fit_strength),
+                lambda t, y: equadiff_brodbar(
+                    t,
+                    y,
+                    thermo_constraints=None,
+                    custom_params=custom_params,
+                    curve_fit_strength=curve_fit_strength,
+                ),
                 t_span=time_range,
                 y0=x0,
                 method='RK45',
                 t_eval=np.linspace(time_range[0], time_range[1], 75),
-                max_step=max_step
+                max_step=max_step,
             )
-            
+
             # Post-processing: clamp residual negative concentrations
             if solution.success:
                 solution.y[:NUM_BASE_METABOLITES] = np.maximum(solution.y[:NUM_BASE_METABOLITES], 0.0)
-            
+
             # Disable flux tracking, Bohr tracking, and pH modulation
             disable_flux_tracking()
             if bohr_tracker is not None:
                 disable_bohr_tracking()
             if ph_perturbation:
                 disable_pH_modulation()
-            
+
             if solution.success:
                 t = solution.t
                 x = solution.y.T
@@ -468,7 +504,7 @@ def main():
             else:
                 print(f"Integration failed: {solution.message}")
                 return
-        
+
         elif model_type == 'refactored':
             print("Using refactored model equations")
             core_params = CoreParams()
@@ -509,7 +545,7 @@ def main():
     # Save metabolite concentrations including pH values
     if model_type == 'brodbar' and x.shape[1] > PHI_INDEX:
         import pandas as pd
-        metabolite_data = {'Time (hours)': t}
+        metabolite_data = {'Time (days)': t}
         
         # Add pHi and pHe if available
         metabolite_data['pHi'] = x[:, PHI_INDEX]

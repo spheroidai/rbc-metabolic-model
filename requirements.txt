@@ -29,7 +29,8 @@ optuna>=3.0.0
 
 # Authentication (Supabase)
 supabase>=2.3.4
-python-dotenv>=1.0.0
+
+pytest>=7.4.0
 
 # ================================================================
 # Installation:

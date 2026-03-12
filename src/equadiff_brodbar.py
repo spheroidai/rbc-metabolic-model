@@ -657,23 +657,18 @@ def equadiff_brodbar(t: float,
     #     exp_data = {
     #         'ATP': ATP, 'ADP': ADP, 'AMP': AMP,
     #         'NAD': NAD, 'NADH': NADH,
-    #         'NADP': NADP, 'NADPH': NADPH,
-    #         'GSH': GSH, 'GSSG': GSSG
-    #     }
-    #     thermo_constraints.set_pool_totals_from_experimental_data(exp_data)
-    #     thermo_constraints._pools_initialized = True
-    
     # ===== PARAMETER INJECTION SYSTEM =====
     # All parameters can be overridden via custom_params dictionary for optimization
     # Format: custom_params = {'vmax_VELAC': 0.65, 'km_LAC': 0.8, ...}
     
     # TRANSPORT PATHWAY - EXTRACELLULAR METABOLITES
     vmax_VELAC = _get_param(custom_params, 'vmax_VELAC', 0.580000)    # Lactate transporter
-    vmax_VEADE = _get_param(custom_params, 'vmax_VEADE', 0.010000)    # Adenine transporter
+    vmax_VEADE_fwd = _get_param(custom_params, 'vmax_VEADE_fwd', _get_param(custom_params, 'vmax_VEADE', 0.010000))
+    vmax_VEADE_rev = _get_param(custom_params, 'vmax_VEADE_rev', _get_param(custom_params, 'vmax_VEADE', 0.010000))
     vmax_VEINO = _get_param(custom_params, 'vmax_VEINO', 0.0001000)   # Inosine transporter
     vmax_VEHYPX = _get_param(custom_params, 'vmax_VEHYPX', 0.002217)  # Hypoxanthine transporter
     vmax_VEMAL = _get_param(custom_params, 'vmax_VEMAL', 0.001227)    # Malate transporter
-    
+
     # GLYCOLYSIS PATHWAY
     vmax_VHK = _get_param(custom_params, 'vmax_VHK', 0.267472)         # Hexokinase
     vmax_VPGI = _get_param(custom_params, 'vmax_VPGI', 0.204493)       # Phosphoglucose isomerase
@@ -884,6 +879,7 @@ def equadiff_brodbar(t: float,
     
     # EXTRACELLULAR TRANSPORT Km VALUES
     km_EGLC = _get_param(custom_params, 'km_EGLC', 49.484000)   # Extracellular glucose
+    km_GLC_transport = _get_param(custom_params, 'km_GLC_transport', 5.0)  # GLUT1 intracellular glucose Km (~5-7 mM, lit: Carruthers 2009)
     km_EADO = _get_param(custom_params, 'km_EADO', 0.1)         # Extracellular adenosine
     km_EADE = _get_param(custom_params, 'km_EADE', 10.0)        # Extracellular adenine
     km_EPYR = _get_param(custom_params, 'km_EPYR', 0.2)         # Extracellular pyruvate
@@ -927,10 +923,16 @@ def equadiff_brodbar(t: float,
     km_SUCARG = _get_param(custom_params, 'km_SUCARG', 0.05)    # N-succinylarginine
     km_CYT = _get_param(custom_params, 'km_CYT', 0.05)          # Cytidine
     km_OAA = _get_param(custom_params, 'km_OAA', 0.05)          # Oxaloacetate
+    # PK allosteric/product inhibition constants
+    ki_ATP_PK = _get_param(custom_params, 'ki_ATP_PK', 2.5)       # ATP allosteric inhibition of PK (lit Ki ~2-3 mM, Valentini 2002)
+    ki_PYR_PK = _get_param(custom_params, 'ki_PYR_PK', 1.0)       # PYR product inhibition of PK (lit Ki ~0.5-2 mM)
     km_CIT = _get_param(custom_params, 'km_CIT', 0.2)           # Citrate
     km_COA = _get_param(custom_params, 'km_COA', 0.02)          # Coenzyme A
     km_SUCCOA = _get_param(custom_params, 'km_SUCCOA', 0.05)    # Succinyl-CoA
     km_MAL = _get_param(custom_params, 'km_MAL', 0.1)           # Malate
+    # Extracellular degradation rate constants
+    k_EGSH_deg = _get_param(custom_params, 'k_EGSH_deg', 0.1)     # First-order EGSH degradation (h⁻¹) — extracellular GSH unstable
+    k_EGSSG_deg = _get_param(custom_params, 'k_EGSSG_deg', 0.05)  # First-order EGSSG degradation (h⁻¹) — extracellular GSSG unstable
     
     # ===== PARAMETER INJECTION COMPLETE =====
     # All 100+ Vmax and Km parameters are now fully injectable via custom_params!
@@ -983,7 +985,9 @@ def equadiff_brodbar(t: float,
     VPGM = vmax_VPGM * mm(x[14], km_P3G)  # PGM: P3G -> P2G
     # PK with F16BP allosteric activation: basal rate * (1 + alpha * Hill(F16BP))
     f_F16BP_PK = 1.0 + alpha_F16BP_PK * (x[11]**n_F16BP_PK / (ka_F16BP_PK**n_F16BP_PK + x[11]**n_F16BP_PK + 1e-30))
-    VPK = f_pH_VPK * vmax_VPK * f_F16BP_PK * mm(x[17], km_PEP) * mm(ADP/(ATP+1e-6), km_ADP_ATP)  # PK [pH + F16BP-modulated]
+    f_ki_ATP_PK = 1.0 / (1.0 + max(ATP, 1e-6) / ki_ATP_PK)   # ATP allosteric inhibition (competitive)
+    f_ki_PYR_PK = 1.0 / (1.0 + x[18] / ki_PYR_PK)            # PYR product inhibition
+    VPK = f_pH_VPK * vmax_VPK * f_F16BP_PK * f_ki_ATP_PK * f_ki_PYR_PK * mm(x[17], km_PEP) * mm(ADP/(ATP+1e-6), km_ADP_ATP)  # PK [pH + F16BP + ATP/PYR inhibition]
     VLDH = f_pH_VLDH * vmax_VLDH * mm(x[18], km_PYR) * mm(NADH/(NAD+1e-6), km_NADH_NAD)  # LDH [pH-modulated]
     
     # Pentose phosphate pathway (with pH modulation)
@@ -1034,13 +1038,14 @@ def equadiff_brodbar(t: float,
     VGDA = vmax_VGDA * mm(x[31], km_GUA)  # GUA → XAN + NH4 (guanine deaminase)
     
     # Transport reactions (complete all extracellular)
-    # ML-optimized glucose consumption: EGLC -> GLC (consumption from extracellular pool)
-    VEGLC = vmax_VEGLC * mm(x[85], km_EGLC)  # EGLC consumption (ML-optimized)
+    # GLUT1 facilitated equilibrium transporter: bidirectional (EGLC ⇌ GLC)
+    # Net flux positive = import. As intracellular GLC rises, net import slows (prevents GLC overshoot)
+    VEGLC = vmax_VEGLC * (mm(x[85], km_EGLC) - mm(x[0], km_GLC_transport))  # GLUT1 bidirectional
     # ML-optimized lactate production: LAC -> ELAC (lactate efflux)
     VELAC = vmax_VELAC * mm(x[19], km_LAC)  # LAC efflux (ML-optimized)
     VEADO = vmax_VEADO * (mm(x[26], km_ADO) - mm(x[88], km_EADO))  # ADO = EADO
     # ML-optimized adenine production: ADE -> EADE (adenine efflux)
-    VEADE = vmax_VEADE * mm(x[25], km_ADE)  # ADE efflux (ML-optimized)
+    VEADE = vmax_VEADE_fwd * mm(x[25], km_ADE) - vmax_VEADE_rev * mm(x[89], km_EADE)
     # ML-optimized inosine production: INO -> EINO (inosine efflux)
     VEINO = vmax_VEINO * mm(x[27], km_INO)  # INO efflux (ML-optimized)
     # ML-optimized hypoxanthine production: HYPX -> EHYPX (hypoxanthine efflux)
@@ -1235,8 +1240,8 @@ def equadiff_brodbar(t: float,
     dxdt[EOXOP_INDEX] = VEOXOP   # EOXOP (extracellular oxoproline: accumulates from OXOP export)
     dxdt[ESER_INDEX] = VESER     # ESER (extracellular serine)
     dxdt[EARG_INDEX] = VEARG     # EARG (extracellular arginine)
-    dxdt[EGSSG_INDEX] = VEGSSG   # EGSSG (extracellular GSSG)
-    dxdt[EGSH_INDEX] = VEGSH_rate # EGSH (extracellular GSH)
+    dxdt[EGSSG_INDEX] = VEGSSG - k_EGSSG_deg * max(x[EGSSG_INDEX], 0.0)  # EGSSG (extracellular GSSG — degrades in storage)
+    dxdt[EGSH_INDEX] = VEGSH_rate - k_EGSH_deg * max(x[EGSH_INDEX], 0.0)  # EGSH (extracellular GSH — degrades in storage)
     dxdt[EASN_INDEX] = VEASN_rate # EASN (extracellular asparagine)
     
     # ===== DYNAMIC pH REGULATION =====
