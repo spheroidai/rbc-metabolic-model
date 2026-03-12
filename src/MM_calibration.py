@@ -480,6 +480,15 @@ CORE_LOWER_GLYCOLYSIS_PROBE_PARAM_NAMES = {
     "vmax_VENOPGM",
     "vmax_VPK",
 }
+CORE_UPSTREAM_GLYCOLYSIS_PROBE_PARAM_NAMES = {
+    "km_GLC_HK",
+    "km_G6P",
+    "km_F6P",
+    "km_ATP_HK",
+    "km_ATP_PFK",
+    "vmax_VHK",
+    "vmax_VPFK",
+}
 PURINE_TRANSPORT_NARROW_PARAM_NAMES = {
     "vmax_VPNPase1",
     "vmax_VXAO",
@@ -852,6 +861,10 @@ def get_phase_params(phase_num, param_scope="all"):
         if phase_num != 1:
             return {}
         return {name: bounds for name, bounds in phase_params.items() if name in CORE_LOWER_GLYCOLYSIS_PROBE_PARAM_NAMES}
+    if param_scope == "core_upstream_glycolysis_probe":
+        if phase_num != 1:
+            return {}
+        return {name: bounds for name, bounds in phase_params.items() if name in CORE_UPSTREAM_GLYCOLYSIS_PROBE_PARAM_NAMES}
     if param_scope == "glycolysis_terminal":
         if phase_num != 1:
             return {}
